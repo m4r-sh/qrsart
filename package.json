@@ -1,0 +1,32 @@
+{
+  "version": "0.0.0",
+  "name": "qrsart",
+  "description": "Generate QR codes with precision",
+  "author": {
+    "name": "m4rsh",
+    "email": "me@m4r.sh",
+    "url": "https://m4r.sh"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/m4r-sh/qrsart.git"
+  },
+  "type": "module",
+  "module": "./dist/index.js",
+  "scripts": {
+    "build": "bun ./scripts/build.js",
+    "bench": "bun ./scripts/build.js && bun ./scripts/bench.js"
+  },
+  "devDependencies": {
+    "mitata": "^0.1.6"
+  },
+  "exports": {
+    ".": {
+      "bun": "./dist/index.js",
+      "node": "./dist/index.js",
+      "browser": "./dist/index.min.js",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    }
+  }
+}
