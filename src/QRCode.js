@@ -180,8 +180,8 @@ export class QRCode {
 
 class PixelGrid {
   constructor(w,h){
-    this.arr = new Uint32Array(w * h);
-    this.used = new Uint32Array(w * h)
+    this.arr = new Uint8Array(w * h);
+    this.used = new Uint8Array(w * h)
     this.w = w;
     this.h = h;
   }
@@ -201,18 +201,6 @@ class PixelGrid {
     if(x < 0 || x >= w || y < 0 || y >= h) return 0;
     return this.used[y * w + x]
   }
-  toString(){
-    let { w, h } = this
-    let str = ''
-    for(let i = 0; i < w; i++){
-      for(let j = 0; j < h; j++){
-        let pixel = this.getPixel(i,j)
-        str += pixel ? '@' : ' '
-      }
-      str += '\n'
-    }
-    return str
-  }
   static combine(...grids){
     let max_w = Math.max(...grids.map(g => g.w))
     let max_h = Math.max(...grids.map(g => g.h))
@@ -220,7 +208,6 @@ class PixelGrid {
     for(let i = 0; i < max_w; i++){
       for(let j = 0; j < max_h; j++){
         if(grids.some(g => g.usedPixel(i,j))){
-          // grid.setPixel(i,j,1) // to see used combination
           grid.setPixel(i,j,grids.some(g => g.getPixel(i,j)))
         }
       }

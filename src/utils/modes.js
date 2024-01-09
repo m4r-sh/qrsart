@@ -81,35 +81,6 @@ export let modes = {
         text: str
       })
     }
-  },
-  kanji: {
-    modeBits: 8,
-    numCharCountBits: (v) => [8,10,12][Math.floor((v + 7)/17)],
-    write(data){
-      throw Error('Not supporting kanji yet')
-    }
-  },
-  eci: {
-    modeBits: 7,
-    numCharCountBits: (v) => [0,0,0][Math.floor((v + 7)/17)],
-    write(data){
-      let bb = [];
-      if (data < 0)
-          throw new RangeError("ECI assignment value out of range");
-      else if (data < (1 << 7))
-          appendBits(data, 8, bb);
-      else if (data < (1 << 14)) {
-          appendBits(0b10, 2, bb);
-          appendBits(data, 14, bb);
-      }
-      else if (data < 1000000) {
-          appendBits(0b110, 3, bb);
-          appendBits(data, 21, bb);
-      }
-      else
-          throw new RangeError("ECI assignment value out of range");
-      return new QRSegment(Mode.ECI, 0, bb);
-    }
   }
 }
 

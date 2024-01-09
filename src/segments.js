@@ -16,7 +16,7 @@ export function findVersion(str,{
     if(version == minVersion || version == 10 || version == 27){
       segs = optimalSegs(str,version)
     }
-    const usedBits = Math.ceil(segs.size / 6)
+    const usedBits = segs.size
     if(usedBits <= dataCapacityBits){
       dataUsedBits = usedBits
       break;
@@ -40,7 +40,7 @@ export function findVersion(str,{
 }
 // return the segment with the lowest length
 // TODO: actually construct segment, no need to wait for that
-function optimalSegs(str, v){
+export function optimalSegs(str, v=1){
   const headCosts = {
     byte: (4 + modes.byte.numCharCountBits(v)) * 6,
     alpha: (4 + modes.alpha.numCharCountBits(v)) * 6,
@@ -69,25 +69,29 @@ function optimalSegs(str, v){
   for(let i = 1; i < charCosts.length; i++){
     let costs = charCosts[i]
     let new_possibilities = []
+    let min_size = Infinity
     for(let p = 0; p < possibilities.length; p++){
       let pos = possibilities[p]
       Object.keys(costs).forEach(mode_type => {
+        // TODO: clean this up. For multi-byte unicode characters
+        let new_steps = mode_type == 'byte' ? Array(costs[mode_type]/48).fill(mode_type) : [mode_type]
+        let new_size = pos.steps[pos.steps.length-1] == mode_type
+          // if no change in mode type
+          ? (costs[mode_type] + pos.size)
+          // else, include header cost and padding to end of last segment sum
+          : (headCosts[mode_type] + Math.floor((pos.size+5) / 6) * 6 + costs[mode_type])
+        min_size = Math.min(min_size,new_size)
         new_possibilities.push({
-          size:  pos.steps[pos.steps.length-1] == mode_type
-            // if no change in mode type
-            ? (costs[mode_type] + pos.size)
-            // else, include header cost and padding to end of last segment sum
-            : (headCosts[mode_type] + Math.floor((pos.size+5) / 6) * 6 + costs[mode_type]),
-          steps: [...pos.steps,mode_type]
+          size:  new_size,
+          steps: [...pos.steps,...new_steps]
         })
       })
     }
-    let min_size = Math.min(...new_possibilities.map(p => p.size))
     // TODO: only include minimally necessary paths
-    possibilities = new_possibilities.filter(x => x.size <= min_size + 20 * 6)
+    possibilities = new_possibilities.filter(x => x.size <= min_size + [14,20,20][Math.floor((v+7)/17)] * 6)
   }
-
   possibilities.sort((a,b) => a.size - b.size)
+  possibilities = possibilities.map(x => ({ steps: x.steps, size: Math.ceil(x.size / 6)}))
   return possibilities[0]
   
 }

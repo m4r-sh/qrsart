@@ -109,33 +109,6 @@ var modes = {
         text: str
       });
     }
-  },
-  kanji: {
-    modeBits: 8,
-    numCharCountBits: (v) => [8, 10, 12][Math.floor((v + 7) / 17)],
-    write(data) {
-      throw Error("Not supporting kanji yet");
-    }
-  },
-  eci: {
-    modeBits: 7,
-    numCharCountBits: (v) => [0, 0, 0][Math.floor((v + 7) / 17)],
-    write(data) {
-      let bb = [];
-      if (data < 0)
-        throw new RangeError("ECI assignment value out of range");
-      else if (data < 1 << 7)
-        appendBits(data, 8, bb);
-      else if (data < 1 << 14) {
-        appendBits(2, 2, bb);
-        appendBits(data, 14, bb);
-      } else if (data < 1e6) {
-        appendBits(6, 3, bb);
-        appendBits(data, 21, bb);
-      } else
-        throw new RangeError("ECI assignment value out of range");
-      return new QRSegment(Mode.ECI, 0, bb);
-    }
   }
 };
 
@@ -193,7 +166,7 @@ function findVersion(str, {
     if (version == minVersion || version == 10 || version == 27) {
       segs = optimalSegs(str, version);
     }
-    const usedBits = Math.ceil(segs.size / 6);
+    const usedBits = segs.size;
     if (usedBits <= dataCapacityBits) {
       dataUsedBits = usedBits;
       break;
@@ -212,7 +185,7 @@ function findVersion(str, {
   }
   return { version, ecl, bitstring: construct_bitstring(str, segs.steps, version, ecl) };
 }
-var optimalSegs = function(str, v) {
+function optimalSegs(str, v = 1) {
   const headCosts = {
     byte: (4 + modes.byte.numCharCountBits(v)) * 6,
     alpha: (4 + modes.alpha.numCharCountBits(v)) * 6,
@@ -240,21 +213,25 @@ var optimalSegs = function(str, v) {
   for (let i = 1;i < charCosts.length; i++) {
     let costs = charCosts[i];
     let new_possibilities = [];
+    let min_size = Infinity;
     for (let p = 0;p < possibilities.length; p++) {
       let pos = possibilities[p];
       Object.keys(costs).forEach((mode_type) => {
+        let new_steps = mode_type == "byte" ? Array(costs[mode_type] / 48).fill(mode_type) : [mode_type];
+        let new_size = pos.steps[pos.steps.length - 1] == mode_type ? costs[mode_type] + pos.size : headCosts[mode_type] + Math.floor((pos.size + 5) / 6) * 6 + costs[mode_type];
+        min_size = Math.min(min_size, new_size);
         new_possibilities.push({
-          size: pos.steps[pos.steps.length - 1] == mode_type ? costs[mode_type] + pos.size : headCosts[mode_type] + Math.floor((pos.size + 5) / 6) * 6 + costs[mode_type],
-          steps: [...pos.steps, mode_type]
+          size: new_size,
+          steps: [...pos.steps, ...new_steps]
         });
       });
     }
-    let min_size = Math.min(...new_possibilities.map((p) => p.size));
-    possibilities = new_possibilities.filter((x) => x.size <= min_size + 20 * 6);
+    possibilities = new_possibilities.filter((x) => x.size <= min_size + [14, 20, 20][Math.floor((v + 7) / 17)] * 6);
   }
   possibilities.sort((a, b) => a.size - b.size);
+  possibilities = possibilities.map((x) => ({ steps: x.steps, size: Math.ceil(x.size / 6) }));
   return possibilities[0];
-};
+}
 var construct_bitstring = function(str, steps, version, ecl) {
   let segs = splitIntoSegments(str, steps);
   let bb = [];
@@ -499,8 +476,8 @@ class QRCode {
 
 class PixelGrid {
   constructor(w, h) {
-    this.arr = new Uint32Array(w * h);
-    this.used = new Uint32Array(w * h);
+    this.arr = new Uint8Array(w * h);
+    this.used = new Uint8Array(w * h);
     this.w = w;
     this.h = h;
   }
@@ -522,18 +499,6 @@ class PixelGrid {
     if (x < 0 || x >= w || y < 0 || y >= h)
       return 0;
     return this.used[y * w + x];
-  }
-  toString() {
-    let { w, h } = this;
-    let str = "";
-    for (let i = 0;i < w; i++) {
-      for (let j = 0;j < h; j++) {
-        let pixel = this.getPixel(i, j);
-        str += pixel ? "@" : " ";
-      }
-      str += "\n";
-    }
-    return str;
   }
   static combine(...grids) {
     let max_w = Math.max(...grids.map((g) => g.w));

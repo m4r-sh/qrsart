@@ -52,11 +52,11 @@ async function speed(){
 }
 
 async function size(){
-  // const min_file = Bun.file('./dist/index.min.js')
-  // const data = await min_file.arrayBuffer()
-  // const compressed = Bun.gzipSync(data)
-  // console.log('minified: ' + data.byteLength + ' bytes')
-  // console.log('compressed: ' + compressed.byteLength + ' bytes')
+  const min_file = Bun.file('./dist/index.min.js')
+  const data = await min_file.arrayBuffer()
+  const compressed = Bun.gzipSync(data)
+  console.log('minified: ' + data.byteLength + ' bytes')
+  console.log('compressed: ' + compressed.byteLength + ' bytes')
 }
 
 

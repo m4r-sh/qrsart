@@ -4,7 +4,11 @@ Generate QR codes with precision
 
 - No dependencies
 - Performant
-- Compliant outputs
+- Simple API
+
+Drawbacks:
+- No kanji support
+- 
 
 ## API
 
@@ -35,3 +39,9 @@ Coming soon
 ## Benchmarks
 
 Coming soon
+
+## Credits
+
+- Nayuki's QR Code Generator
+  - https://www.nayuki.io/page/creating-a-qr-code-step-by-step
+  - https://www.nayuki.io/page/optimal-text-segmentation-for-qr-codes
