@@ -1,5 +1,6 @@
 import { findVersion } from "./segments.js";
 import { QRCode } from "./QRCode.js";
+import { PixelGrid } from "./PixelGrid.js";
 
 function createQR(data,{
   minVersion=1,
@@ -16,4 +17,4 @@ function createQR(data,{
   })
 }
 
-export { QRCode, findVersion, createQR }
+export { QRCode, findVersion, createQR, PixelGrid }

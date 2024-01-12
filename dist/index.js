@@ -316,6 +316,48 @@ function splitIntoSegments(str = "", steps = []) {
   return segments;
 }
 
+// src/PixelGrid.js
+class PixelGrid {
+  constructor(w, h) {
+    this.arr = new Uint8Array(w * h);
+    this.used = new Uint8Array(w * h);
+    this.w = w;
+    this.h = h;
+  }
+  setPixel(x, y, v) {
+    let { w, h } = this;
+    if (x < 0 || x >= w || y < 0 || y >= h)
+      return;
+    this.arr[y * w + x] = v & 1;
+    this.used[y * w + x] = 1;
+  }
+  getPixel(x, y) {
+    let { w, h } = this;
+    if (x < 0 || x >= w || y < 0 || y >= h)
+      return 0;
+    return this.arr[y * w + x];
+  }
+  usedPixel(x, y) {
+    let { w, h } = this;
+    if (x < 0 || x >= w || y < 0 || y >= h)
+      return 0;
+    return this.used[y * w + x];
+  }
+  static combine(...grids) {
+    let max_w = Math.max(...grids.map((g) => g.w));
+    let max_h = Math.max(...grids.map((g) => g.h));
+    let grid = new PixelGrid(max_w, max_h);
+    for (let i = 0;i < max_w; i++) {
+      for (let j = 0;j < max_h; j++) {
+        if (grids.some((g) => g.usedPixel(i, j))) {
+          grid.setPixel(i, j, grids.some((g) => g.getPixel(i, j)));
+        }
+      }
+    }
+    return grid;
+  }
+}
+
 // src/QRCode.js
 var MASK_SHAPES = [
   (x, y) => (x + y) % 2 == 0,
@@ -474,47 +516,6 @@ class QRCode {
   }
 }
 
-class PixelGrid {
-  constructor(w, h) {
-    this.arr = new Uint8Array(w * h);
-    this.used = new Uint8Array(w * h);
-    this.w = w;
-    this.h = h;
-  }
-  setPixel(x, y, v) {
-    let { w, h } = this;
-    if (x < 0 || x >= w || y < 0 || y >= h)
-      return;
-    this.arr[y * w + x] = v & 1;
-    this.used[y * w + x] = 1;
-  }
-  getPixel(x, y) {
-    let { w, h } = this;
-    if (x < 0 || x >= w || y < 0 || y >= h)
-      return 0;
-    return this.arr[y * w + x];
-  }
-  usedPixel(x, y) {
-    let { w, h } = this;
-    if (x < 0 || x >= w || y < 0 || y >= h)
-      return 0;
-    return this.used[y * w + x];
-  }
-  static combine(...grids) {
-    let max_w = Math.max(...grids.map((g) => g.w));
-    let max_h = Math.max(...grids.map((g) => g.h));
-    let grid = new PixelGrid(max_w, max_h);
-    for (let i = 0;i < max_w; i++) {
-      for (let j = 0;j < max_h; j++) {
-        if (grids.some((g) => g.usedPixel(i, j))) {
-          grid.setPixel(i, j, grids.some((g) => g.getPixel(i, j)));
-        }
-      }
-    }
-    return grid;
-  }
-}
-
 // src/index.js
 var createQR = function(data, {
   minVersion = 1,
@@ -533,5 +534,6 @@ var createQR = function(data, {
 export {
   findVersion,
   createQR,
-  QRCode
+  QRCode,
+  PixelGrid
 };
