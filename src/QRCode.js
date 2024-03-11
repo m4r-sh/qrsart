@@ -17,12 +17,14 @@ export class QRCode {
     version=2,
     ecl=0,
     mask=0,
-    bitstring=''
+    bitstring='',
+    data
   }={}){
     this.version = version
     this.ecl = ecl
     this.mask = mask
     this.bitstring = bitstring
+    this.data = data
   }
 
   get size(){

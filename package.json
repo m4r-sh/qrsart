@@ -18,6 +18,8 @@
     "bench": "bun ./scripts/build.js && bun ./scripts/bench.js"
   },
   "devDependencies": {
+    "@napi-rs/canvas": "^0.1.51",
+    "hueman": "^2.1.3",
     "mitata": "^0.1.6"
   },
   "exports": {

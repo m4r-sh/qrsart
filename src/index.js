@@ -1,6 +1,7 @@
 import { findVersion } from "./segments.js";
 import { QRCode } from "./QRCode.js";
 import { PixelGrid } from "./PixelGrid.js";
+import { permuteURL, permuteWIFI } from "./permute.js";
 
 function createQR(data,{
   minVersion=1,
@@ -10,6 +11,7 @@ function createQR(data,{
 }={}){
   let { version, ecl, bitstring } = findVersion(data, { minVersion, minEcl, maxVersion })
   return new QRCode({
+    data,
     version,
     ecl,
     mask,
@@ -17,4 +19,11 @@ function createQR(data,{
   })
 }
 
-export { QRCode, findVersion, createQR, PixelGrid }
+export { 
+  QRCode,
+  findVersion,
+  createQR,
+  PixelGrid,
+  permuteURL,
+  permuteWIFI
+}
