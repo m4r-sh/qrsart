@@ -17,7 +17,7 @@
 ## Install
 
 ```
-$ bun add qrsart
+bun install qrsart
 ```
 
 ## Usage
