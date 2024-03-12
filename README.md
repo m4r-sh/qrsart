@@ -88,7 +88,7 @@ console.log(qr)
       <a href="https://github.com/m4r-sh/qrsart/tree/main/examples/tetris">Example Code</a>
     </td>
     <td>
-      <img src="https://raw.githubusercontent.com/m4r-sh/qrsart/main/examples/tetris/output.png" width="300"/>
+      <img src="https://github.com/m4r-sh/qrsart/blob/main/examples/tetris/output.png" width="300"/>
     </td>
   </tr>
   <tr>
@@ -97,7 +97,7 @@ console.log(qr)
       <a href="https://github.com/m4r-sh/qrsart/tree/main/examples/debug">Example Code</a>
     </td>
     <td>
-      <img src="https://raw.githubusercontent.com/m4r-sh/qrsart/main/examples/debug/output.png" width="300"/>
+      <img src="https://github.com/m4r-sh/qrsart/blob/main/examples/debug/output.png" width="300"/>
     </td>
   </tr>
 </table>
