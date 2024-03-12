@@ -552,7 +552,7 @@ function permuteURL(str = `m4r.sh/tetris`, {
   protocol_arr.forEach((protocol_str) => {
     domain_arr.forEach((domain_str) => {
       path_arr.forEach((path_str) => {
-        options.push(`${protocol_str}://${domain_str}${path}${search}${hash}`);
+        options.push(`${protocol_str}://${domain_str}${path_str}${search}${hash}`);
       });
     });
   });
@@ -575,10 +575,10 @@ var permuteDomain = function({
   return domain_caps ? casePermutation(domain) : [domain];
 };
 var permutePath = function({
-  path: path2 = "/qr/tetris",
+  path = "/qr/tetris",
   path_caps = false
 } = {}) {
-  return path_caps ? casePermutation(path2) : [path2];
+  return path_caps ? casePermutation(path) : [path];
 };
 var casePermutation = function(str = "tEsT") {
   let sp = str.toLowerCase().split("");
