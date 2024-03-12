@@ -2,12 +2,20 @@
 
 > Generate QR codes with aesthetic precision
 
-- No dependencies
-- Optimal segmentation
-- Labeled output
-- Built-in permutation logic
+---
 
-Drawbacks:
+***NOTICE:** This library is actively being worked on. API and features are subject to change
+
+---
+
+**Benefits**:
+- No dependencies
+- Optimal data segmentation
+- Labeled grid output
+- Built-in permutation logic
+- Isomorphic: Works in browser / NodeJS / Bun
+
+**Drawbacks**:
 - No kanji support
 - API not final (just getting started)
 - Not perf optimized (yet)
@@ -52,22 +60,73 @@ console.log(qr)
 
 ## API
 
-`createQR(data, { minVersion, maxVersion, minEcl, mask }) => QRCode`
+### createQR(data, options)
+Returns: `QRCode`
 
-`findVersion(data="",{ minVersion, maxVersion, minEcl }) => { version, ecl, bitstring }`
+Creates a QRCode object which can be used in custom render logic
 
-`permuteURL(str,options) => []`
-- `options`: `{protocols=['https','http'],protocol_caps=true,domain_caps=true,path_caps=false}`
+#### data
+Type: `String`
 
-`permuteWifi(name,pwd) => []`
+The raw text to be encoded into the QR Code
 
-`new PixelGrid(w,h)`
+#### options
+Type: `Object`
+
+- `minVersion`: number (0 - 40)
+- `maxVersion`: number (0 - 40)
+- `mask`: number (0 - 8)
+- `minEcl`: string ('low' | 'medium' | 'quartile' | 'high')
+
+### permuteURL(url, options)
+Returns: `[String]`
+
+Permutes a URL into an array of all possible variations of the same URL.
+
+#### url
+Type: `String`
+
+A URL, i.e. `https://github.com/m4r-sh` or `m4r.sh`
+
+#### options
+Type: `Object`
+
+Options for URL variation. Caps options permute the substring into every possible uppercase/lowercase combination.
+
+- `protocols`: `['http','https']`
+- `protocol_caps`: `true`
+- `domain_caps`: `true`
+- `path_caps`: `false`
+
+
+### permuteWIFI(name, pwd)
+Returns: `[String]`
+
+Permutes a WiFi name/pwd into an array of all possible encoding orders.
+
+#### name
+Type: `String`
+
+The name of the WiFi network
+
+#### pwd
+Type: `String`
+
+The name of the WiFi network
+
+### PixelGrid(w,h)
+
+Helper class for 2D matrix of pixels
+
 - `.setPixel(x,y,v)`
 - `.getPixel(x,y)`
 - `.usedPixel(x,y)`
 - `PixelGrid.combine(...grids)`
 
-`new QRCode({ bitstring, version, ecl, mask, data })`
+### QRCode({ bitstring, version, ecl, mask, data })
+
+Helper class for QR Code data
+
 - `.size`
 - `.data`
 - `.grid`
@@ -84,20 +143,20 @@ console.log(qr)
 <table>
   <tr>
     <td>
-      <h3>Tetris Shape Packing</h3>
-      <a href="https://github.com/m4r-sh/qrsart/tree/main/examples/tetris">Example Code</a>
-    </td>
     <td>
-      <img src="https://github.com/m4r-sh/qrsart/blob/main/examples/tetris/output.png" width="300"/>
+      <img src="https://github.com/m4r-sh/qrsart/blob/main/examples/tetris/output.png" width="200"/>
+    </td>
+      <h3>Tetromino Shape Packing</h3>
+      <a href="https://github.com/m4r-sh/qrsart/tree/main/examples/tetris">Example Code</a>
     </td>
   </tr>
   <tr>
     <td>
-      <h3>Debug View</h3>
-      <a href="https://github.com/m4r-sh/qrsart/tree/main/examples/debug">Example Code</a>
+      <img src="https://github.com/m4r-sh/qrsart/blob/main/examples/debug/output.png" width="200"/>
     </td>
     <td>
-      <img src="https://github.com/m4r-sh/qrsart/blob/main/examples/debug/output.png" width="300"/>
+      <h3>Debug View</h3>
+      <a href="https://github.com/m4r-sh/qrsart/tree/main/examples/debug">Example Code</a>
     </td>
   </tr>
 </table>
