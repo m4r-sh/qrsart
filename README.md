@@ -162,7 +162,7 @@ The password of the WiFi network
   </tr>
   <tr>
     <td>
-      <img src="https://github.com/m4r-sh/qrsart/blob/main/examples/wifi/output.png" width="200"/>
+      <img src="https://github.com/m4r-sh/qrsart/blob/main/examples/wifi/output.png" width="300"/>
     </td>
     <td>
       <h3>Tilted WiFi</h3>
