@@ -27,11 +27,11 @@ export async function debug(qr){
 
   // --- Rendering Layers ---
 
-  // 3. Timing Patterns (PURPLE)
+  // 1. Timing Patterns (PURPLE)
   hue_squares(qr.timing_patterns,{ hue: 300, ctx, w, h, module_size, size })
-  // 1. Finder Patterns (RED)
+  // 2. Finder Patterns (RED)
   hue_squares(qr.finder_patterns,{ hue: 0, ctx, w, h, module_size, size })
-  // 2. Alignment Patterns (ORANGE)
+  // 3. Alignment Patterns (ORANGE)
   hue_squares(qr.alignment_patterns,{ hue: 30, ctx, w, h, module_size, size })
   // 4. Format Pattern (GREEN)
   hue_squares(qr.format_pattern,{ hue: 160, ctx, w, h, module_size, size })

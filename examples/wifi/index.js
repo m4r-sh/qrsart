@@ -9,7 +9,7 @@ let wifi_options = permuteWIFI('Example','PASSWORD69420')
 let qr = createQR(wifi_options[0], {
   minVersion: 2,
   minEcl: 'quartile',
-  mask: 1
+  mask: 2
 })
 
 console.log({
@@ -24,7 +24,7 @@ export async function wifi(qr){
   // --- CANVAS SETUP ---
   let module_size = 100
   let size = qr.size
-  let padding = size * module_size * (Math.sqrt(2) / 6)
+  let padding = size * module_size * (Math.sqrt(2) / 3)
   let w = padding * 2 + size * module_size
   let h = padding * 2 + size * module_size
   let canvas = createCanvas(w,h)
@@ -69,8 +69,8 @@ function black_squares(grid,{ hue=0, sat=1, ctx, w, h, module_size, size}={}){
 }
 
 function radial_lines(grid,{ ctx, w, h, module_size, size}={}){
-  for(let rad_i = 0; rad_i < size; rad_i++){
-    let every_n = 3
+  for(let rad_i = 0; rad_i < size * Math.sqrt(2); rad_i++){
+    let every_n = 2
     let hue_range = 100
     let hue_start = 200
     let thic = 0.5 + (rad_i % every_n == 0 ? 0.5 : 0.1)
@@ -91,6 +91,15 @@ function radial_lines(grid,{ ctx, w, h, module_size, size}={}){
           ctx.fillRect(x * module_size, (y + in_gap) * module_size, module_size, module_size * in_thic)
         }
       }
+      // OUTER RING (flair)
+      if(y < 0 && distance({x:size*0.75,y:size*0.75},{x,y}) <= size*0.75 * Math.sqrt(2)){
+        ctx.fillStyle = fill_fn(dist);
+        ctx.fillRect(x * module_size, (y + gap) * module_size, module_size, module_size * thic)
+        if(Math.random() < 0.5){
+          ctx.fillStyle = '#fff';
+          ctx.fillRect(x * module_size, (y + in_gap) * module_size, module_size, module_size * in_thic)
+        }
+      }
     }
     // y col
     for(let y = size-rad_i; y < size; y++){
@@ -100,6 +109,15 @@ function radial_lines(grid,{ ctx, w, h, module_size, size}={}){
         ctx.fillStyle = fill_fn(dist);
         ctx.fillRect((x + gap) * module_size, y * module_size, module_size * thic, module_size)
         if(!grid.getPixel(x,y)){
+          ctx.fillStyle = '#fff';
+          ctx.fillRect((x + in_gap) * module_size, y * module_size, module_size * in_thic, module_size)
+        }
+      }
+      // OUTER RING (flair)
+      if(x < 0 && distance({x:size*0.75,y:size*0.75},{x,y}) <= size*0.75 * Math.sqrt(2)){
+        ctx.fillStyle = fill_fn(dist);
+        ctx.fillRect((x + gap) * module_size, y * module_size, module_size * thic, module_size)
+        if(Math.random() < 0.5){
           ctx.fillStyle = '#fff';
           ctx.fillRect((x + in_gap) * module_size, y * module_size, module_size * in_thic, module_size)
         }
@@ -116,4 +134,8 @@ function radial_lines(grid,{ ctx, w, h, module_size, size}={}){
       }
     }
   }
+}
+
+function distance(p1,p2){
+  return Math.sqrt(Math.pow(p1.x - p2.x,2) + Math.pow(p1.y - p2.y,2))
 }
