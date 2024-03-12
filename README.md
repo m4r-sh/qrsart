@@ -2,12 +2,6 @@
 
 > Generate QR codes with aesthetic precision
 
----
-
-***NOTICE:** This library is actively being worked on. API and features are subject to change
-
----
-
 **Benefits**:
 - No dependencies
 - Optimal data segmentation
@@ -78,6 +72,36 @@ Type: `Object`
 - `mask`: number (0 - 8)
 - `minEcl`: string ('low' | 'medium' | 'quartile' | 'high')
 
+---
+
+### PixelGrid(w,h)
+
+Helper class for 2D matrix of pixels
+
+- `.setPixel(x,y,v)`
+- `.getPixel(x,y)`
+- `.usedPixel(x,y)`
+- `PixelGrid.combine(...grids)`
+
+---
+
+### QRCode({ bitstring, version, ecl, mask, data })
+
+Helper class for QR Code data
+
+- `.size`
+- `.data`
+- `.grid`
+- `.data_pattern`
+- `.functional_patterns`
+- `.finder_patterns`
+- `.alignment_patterns`
+- `.timing_patterns`
+- `.format_pattern`
+- `.version_pattern`
+
+---
+
 ### permuteURL(url, options)
 Returns: `[String]`
 
@@ -98,6 +122,7 @@ Options for URL variation. Caps options permute the substring into every possibl
 - `domain_caps`: `true`
 - `path_caps`: `false`
 
+---
 
 ### permuteWIFI(name, pwd)
 Returns: `[String]`
@@ -114,38 +139,14 @@ Type: `String`
 
 The name of the WiFi network
 
-### PixelGrid(w,h)
-
-Helper class for 2D matrix of pixels
-
-- `.setPixel(x,y,v)`
-- `.getPixel(x,y)`
-- `.usedPixel(x,y)`
-- `PixelGrid.combine(...grids)`
-
-### QRCode({ bitstring, version, ecl, mask, data })
-
-Helper class for QR Code data
-
-- `.size`
-- `.data`
-- `.grid`
-- `.data_pattern`
-- `.functional_patterns`
-- `.finder_patterns`
-- `.alignment_patterns`
-- `.timing_patterns`
-- `.format_pattern`
-- `.version_pattern`
-
 ## Examples
 
 <table>
   <tr>
     <td>
-    <td>
       <img src="https://github.com/m4r-sh/qrsart/blob/main/examples/tetris/output.png" width="200"/>
     </td>
+    <td>
       <h3>Tetromino Shape Packing</h3>
       <a href="https://github.com/m4r-sh/qrsart/tree/main/examples/tetris">Example Code</a>
     </td>
