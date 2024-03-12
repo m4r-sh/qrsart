@@ -144,7 +144,7 @@ The password of the WiFi network
 <table>
   <tr>
     <td>
-      <img src="https://github.com/m4r-sh/qrsart/blob/main/examples/tetris/output.png" width="200"/>
+      <img src="https://github.com/m4r-sh/qrsart/blob/main/examples/tetris/output.png" width="300"/>
     </td>
     <td>
       <h3>Tetromino Shape Packing</h3>
@@ -153,7 +153,7 @@ The password of the WiFi network
   </tr>
   <tr>
     <td>
-      <img src="https://github.com/m4r-sh/qrsart/blob/main/examples/debug/output.png" width="200"/>
+      <img src="https://github.com/m4r-sh/qrsart/blob/main/examples/debug/output.png" width="300"/>
     </td>
     <td>
       <h3>Debug View</h3>

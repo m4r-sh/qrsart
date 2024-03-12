@@ -7,7 +7,7 @@ export async function tetris_render(qr){
 
   // --- CANVAS SETUP ---
   let module_size = 100
-  let padding = 100
+  let padding = 4 * module_size
   let w = padding * 2 + qr.size * module_size
   let h = padding * 2 + qr.size * module_size
   let canvas = createCanvas(w,h)
