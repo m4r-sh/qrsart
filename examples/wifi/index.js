@@ -52,7 +52,7 @@ export async function wifi(qr){
 
   // --- EXPORT ---
   const pngData = await canvas.encode('png')
-  Bun.write(`./examples/wifi/output.png`, pngData)
+  Bun.write(`./wifi/output.png`, pngData)
 }
 
 

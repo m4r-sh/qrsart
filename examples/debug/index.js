@@ -42,7 +42,7 @@ export async function debug(qr){
 
   // --- EXPORT ---
   const pngData = await canvas.encode('png')
-  Bun.write(`./examples/debug/output.png`, pngData)
+  Bun.write(`./debug/output.png`, pngData)
 }
 
 

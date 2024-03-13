@@ -36,7 +36,7 @@ export async function tetris_render(qr){
 
   // --- EXPORT ---
   const pngData = await canvas.encode('png')
-  Bun.write(`./examples/tetris/output.png`, pngData)
+  Bun.write(`./tetris/output.png`, pngData)
 }
 
 function tetrisFill(grid, { ctx, w, h, module_size, size }){
