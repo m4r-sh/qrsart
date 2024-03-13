@@ -4,7 +4,10 @@ node_modules
 *.lock
 *.log
 
-tests
-examples
-scripts
-notes
+tests/
+examples/
+scripts/
+notes/
+tsconfig.json
+package-lock.json
+bun.lockb

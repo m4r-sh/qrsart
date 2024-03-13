@@ -39,15 +39,15 @@ export async function wifi(qr){
   // --- Rendering Layers ---
 
   black_squares(PixelGrid.combine(
-    qr.finder_patterns,
-    qr.alignment_patterns,
-    qr.timing_patterns,
+    qr.finder_grid,
+    qr.alignment_grid,
+    qr.timing_grid,
   ),{ hue: 280, sat: 0, ctx, w, h, module_size, size })
 
   radial_lines(PixelGrid.combine(
-    qr.format_pattern,
-    qr.version_pattern,
-    qr.data_pattern
+    qr.format_grid,
+    qr.version_grid,
+    qr.data_grid
   ),{ ctx, w, h, module_size, size })
 
   // --- EXPORT ---

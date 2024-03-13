@@ -5,18 +5,18 @@ export class PixelGrid {
     this.w = w;
     this.h = h;
   }
-  setPixel(x,y,v){
+  setPixel(x=0,y=0,v=1){
     let { w, h } = this
     if(x < 0 || x >= w || y < 0 || y >= h) return;
     this.arr[y * w + x] = (v & 1)
     this.used[y * w + x] = 1
   }
-  getPixel(x,y){
+  getPixel(x=0,y=0){
     let { w, h } = this
     if(x < 0 || x >= w || y < 0 || y >= h) return 0;
     return this.arr[y * w + x]
   }
-  usedPixel(x,y){
+  usedPixel(x=0,y=0){
     let { w, h } = this
     if(x < 0 || x >= w || y < 0 || y >= h) return 0;
     return this.used[y * w + x]

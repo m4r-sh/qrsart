@@ -25,10 +25,10 @@ export function find_ideal_qr({
         console.log(`version mismatch: ${qr.version} ${version}`)
       }
       let num_unused = tetris_calc(PixelGrid.combine(
-        qr.data_pattern,
-        qr.version_pattern,
-        qr.format_pattern,
-        qr.timing_patterns
+        qr.data_grid,
+        qr.version_grid,
+        qr.format_grid,
+        qr.timing_grid
       ),qr.size)
       if(num_unused <= min.unused){
         min = { unused: num_unused, qr, data }

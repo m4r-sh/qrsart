@@ -28,17 +28,17 @@ export async function debug(qr){
   // --- Rendering Layers ---
 
   // 1. Timing Patterns (PURPLE)
-  hue_squares(qr.timing_patterns,{ hue: 300, ctx, w, h, module_size, size })
+  hue_squares(qr.timing_grid,{ hue: 300, ctx, w, h, module_size, size })
   // 2. Finder Patterns (RED)
-  hue_squares(qr.finder_patterns,{ hue: 0, ctx, w, h, module_size, size })
+  hue_squares(qr.finder_grid,{ hue: 0, ctx, w, h, module_size, size })
   // 3. Alignment Patterns (ORANGE)
-  hue_squares(qr.alignment_patterns,{ hue: 30, ctx, w, h, module_size, size })
+  hue_squares(qr.alignment_grid,{ hue: 30, ctx, w, h, module_size, size })
   // 4. Format Pattern (GREEN)
-  hue_squares(qr.format_pattern,{ hue: 160, ctx, w, h, module_size, size })
+  hue_squares(qr.format_grid,{ hue: 160, ctx, w, h, module_size, size })
   // 5. Version Pattern (BLUE)
-  hue_squares(qr.version_pattern,{ hue: 220, ctx, w, h, module_size, size })
+  hue_squares(qr.version_grid,{ hue: 220, ctx, w, h, module_size, size })
   // 6. Data Pattern (BLACK/WHITE)
-  hue_squares(qr.data_pattern,{ hue: 220, sat: 0, ctx, w, h, module_size, size })
+  hue_squares(qr.data_grid,{ hue: 220, sat: 0, ctx, w, h, module_size, size })
 
   // --- EXPORT ---
   const pngData = await canvas.encode('png')

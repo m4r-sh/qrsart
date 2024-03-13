@@ -19,16 +19,16 @@ export async function tetris_render(qr){
   // --- Rendering Layers ---
   // 1. Black Squares
   b_w_squares(PixelGrid.combine(
-    qr.finder_patterns,
-    qr.alignment_patterns
+    qr.finder_grid,
+    qr.alignment_grid
   ),{ ctx, w, h, padding, module_size, size: qr.size })
 
   // 2. Tetrominoes
   let unused = tetrisFill(PixelGrid.combine(
-    qr.data_pattern,
-    qr.version_pattern,
-    qr.format_pattern,
-    qr.timing_patterns
+    qr.data_grid,
+    qr.version_grid,
+    qr.format_grid,
+    qr.timing_grid
   ),{ ctx, w, h, padding, module_size, size: qr.size })
 
   // 3. Gray lines

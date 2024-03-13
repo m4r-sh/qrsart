@@ -3,7 +3,7 @@ import { QRCode } from "./QRCode.js";
 import { PixelGrid } from "./PixelGrid.js";
 import { permuteURL, permuteWIFI } from "./permute.js";
 
-function createQR(data,{
+function createQR(data="",{
   minVersion=1,
   maxVersion=40,
   minEcl='low',

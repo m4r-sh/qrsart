@@ -40,14 +40,14 @@ console.log(qr)
 //   data: "HTTPS://GITHUB.COM/m4r-sh/qrsart",
 //   size: 29,
 //   bitstring: "001000...110000",
-//   functional_patterns: PixelGrid,
-//   finder_patterns: PixelGrid,
-//   timing_patterns: PixelGrid,
+//   functional_grid: PixelGrid,
+//   finder_grid: PixelGrid,
+//   timing_grid: PixelGrid,
 //   alignment_positions: PixelGrid,
-//   alignment_patterns: PixelGrid,
-//   format_pattern: PixelGrid,
-//   version_pattern: PixelGrid,
-//   data_pattern: PixelGrid,
+//   alignment_grid: PixelGrid,
+//   format_grid: PixelGrid,
+//   version_grid: PixelGrid,
+//   data_grid: PixelGrid,
 //   grid: PixelGrid,
 // }
 ```
@@ -92,13 +92,13 @@ Helper class for QR Code data
 - `.size`
 - `.data`
 - `.grid`
-- `.data_pattern`
-- `.functional_patterns`
-- `.finder_patterns`
-- `.alignment_patterns`
-- `.timing_patterns`
-- `.format_pattern`
-- `.version_pattern`
+- `.data_grid`
+- `.functional_grid`
+- `.finder_grid`
+- `.alignment_grid`
+- `.timing_grid`
+- `.format_grid`
+- `.version_grid`
 
 ---
 

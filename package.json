@@ -29,7 +29,8 @@
       "node": "./dist/index.js",
       "browser": "./dist/index.min.js",
       "import": "./dist/index.js",
-      "require": "./dist/index.js"
+      "require": "./dist/index.js",
+      "types": "./types/index.d.ts"
     }
   }
 }

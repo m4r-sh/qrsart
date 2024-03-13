@@ -324,20 +324,20 @@ class PixelGrid {
     this.w = w;
     this.h = h;
   }
-  setPixel(x, y, v) {
+  setPixel(x = 0, y = 0, v = 1) {
     let { w, h } = this;
     if (x < 0 || x >= w || y < 0 || y >= h)
       return;
     this.arr[y * w + x] = v & 1;
     this.used[y * w + x] = 1;
   }
-  getPixel(x, y) {
+  getPixel(x = 0, y = 0) {
     let { w, h } = this;
     if (x < 0 || x >= w || y < 0 || y >= h)
       return 0;
     return this.arr[y * w + x];
   }
-  usedPixel(x, y) {
+  usedPixel(x = 0, y = 0) {
     let { w, h } = this;
     if (x < 0 || x >= w || y < 0 || y >= h)
       return 0;
@@ -387,11 +387,11 @@ class QRCode {
   get size() {
     return this.version * 4 + 17;
   }
-  get functional_patterns() {
-    let { finder_patterns, timing_patterns, alignment_patterns, version_pattern, format_pattern } = this;
-    return PixelGrid.combine(finder_patterns, timing_patterns, alignment_patterns, version_pattern, format_pattern);
+  get functional_grid() {
+    let { finder_grid, timing_grid, alignment_grid, version_grid, format_grid } = this;
+    return PixelGrid.combine(finder_grid, timing_grid, alignment_grid, version_grid, format_grid);
   }
-  get finder_patterns() {
+  get finder_grid() {
     let { size } = this;
     let grid = new PixelGrid(size, size);
     for (let r = 0;r < 8; r++) {
@@ -404,7 +404,7 @@ class QRCode {
     }
     return grid;
   }
-  get timing_patterns() {
+  get timing_grid() {
     let { size } = this;
     let grid = new PixelGrid(size, size);
     for (let i = 8;i <= size - 8; i++) {
@@ -427,7 +427,7 @@ class QRCode {
     }
     return result;
   }
-  get alignment_patterns() {
+  get alignment_grid() {
     let { version, size, alignment_positions } = this;
     let grid = new PixelGrid(size, size);
     const numAlign = alignment_positions.length;
@@ -445,7 +445,7 @@ class QRCode {
     }
     return grid;
   }
-  get format_pattern() {
+  get format_grid() {
     let { ecl, mask, size } = this;
     let grid = new PixelGrid(size, size);
     const data = ecls[ecl].formatBits << 3 | mask;
@@ -468,7 +468,7 @@ class QRCode {
     grid.setPixel(8, this.size - 8, 1);
     return grid;
   }
-  get version_pattern() {
+  get version_grid() {
     let { version, size } = this;
     const grid = new PixelGrid(size, size);
     if (version < 7) {
@@ -487,8 +487,8 @@ class QRCode {
     }
     return grid;
   }
-  get data_pattern() {
-    let { size, functional_patterns, bitstring, mask } = this;
+  get data_grid() {
+    let { size, functional_grid, bitstring, mask } = this;
     const grid = new PixelGrid(size, size);
     let i = 0;
     for (let right = size - 1;right >= 1; right -= 2) {
@@ -500,7 +500,7 @@ class QRCode {
           const x = right - j;
           const upward = (right + 1 & 2) == 0;
           const y = upward ? size - 1 - vert : vert;
-          const isFunctional = functional_patterns.usedPixel(x, y);
+          const isFunctional = functional_grid.usedPixel(x, y);
           if (!isFunctional && i < bitstring.length) {
             let dat = parseInt(bitstring[i]);
             dat ^= MASK_SHAPES[mask](x, y);
@@ -513,8 +513,8 @@ class QRCode {
     return grid;
   }
   get grid() {
-    let { functional_patterns, data_pattern } = this;
-    return PixelGrid.combine(functional_patterns, data_pattern);
+    let { functional_grid, data_grid } = this;
+    return PixelGrid.combine(functional_grid, data_grid);
   }
 }
 
@@ -593,7 +593,7 @@ var casePermutation = function(str = "tEsT") {
 };
 
 // src/index.js
-var createQR = function(data, {
+var createQR = function(data = "", {
   minVersion = 1,
   maxVersion = 40,
   minEcl = "low",
