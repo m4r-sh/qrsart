@@ -15,7 +15,8 @@
   "module": "./dist/index.js",
   "scripts": {
     "build": "bun ./scripts/build.js",
-    "bench": "bun ./scripts/build.js && bun ./scripts/bench.js"
+    "bench": "bun ./scripts/build.js && bun ./scripts/bench.js",
+    "test": "bun test"
   },
   "devDependencies": {
     "@napi-rs/canvas": "^0.1.51",

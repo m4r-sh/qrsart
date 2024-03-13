@@ -7,7 +7,7 @@ tetris()
 export async function tetris(){
   
   let qr = find_ideal_qr({
-    data_options: permuteURL('m4r.sh/qr/tetris'),
+    data_options: permuteURL('m4r.sh'),
     ecl: 'medium',
     version: 3
   })

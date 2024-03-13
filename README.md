@@ -25,7 +25,7 @@ bun install qrsart
 ```js
 import { createQR } from 'qrsart'
 
-let qr = createQR('https://github.com/m4r-sh/qrsart',{
+let qr = createQR('HTTPS://GITHUB.COM/m4r-sh/qrsart',{
   minVersion: 2, // 1 - 40
   minEcl: 'medium', // 'low','medium','quartile','high'
   mask: 0, // 0 - 7
