@@ -273,7 +273,6 @@ var construct_bitstring = function(str, steps, version, ecl) {
     });
   }
   return result.map((n) => n.toString(2).padStart(8, "0")).join("");
-  return result;
 };
 var countUtf8Bytes = function(cp = 128) {
   if (cp < 0)
@@ -501,8 +500,8 @@ class QRCode {
           const upward = (right + 1 & 2) == 0;
           const y = upward ? size - 1 - vert : vert;
           const isFunctional = functional_grid.usedPixel(x, y);
-          if (!isFunctional && i < bitstring.length) {
-            let dat = parseInt(bitstring[i]);
+          if (!isFunctional) {
+            let dat = i < bitstring.length ? parseInt(bitstring[i]) : 0;
             dat ^= MASK_SHAPES[mask](x, y);
             grid.setPixel(x, y, dat);
             i++;

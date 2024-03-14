@@ -163,8 +163,8 @@ export class QRCode {
           const upward = ((right + 1) & 2) == 0
           const y = upward ? size - 1 - vert : vert
           const isFunctional = functional_grid.usedPixel(x,y)
-          if(!isFunctional && i < bitstring.length){
-            let dat = parseInt(bitstring[i])
+          if(!isFunctional){
+            let dat = i < bitstring.length ? parseInt(bitstring[i]) : 0
             dat ^= (MASK_SHAPES[mask](x,y))
             grid.setPixel(x,y,dat)
             i++

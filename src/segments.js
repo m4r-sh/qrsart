@@ -163,7 +163,6 @@ function construct_bitstring(str, steps, version, ecl){
       });
   }
   return result.map(n => n.toString(2).padStart(8,'0')).join('')
-  return result;
 }
 
 

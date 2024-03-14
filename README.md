@@ -1,8 +1,18 @@
-# qrsart
+<p align="center">
+  <img src="https://raw.githubusercontent.com/m4r-sh/qrsart/main/docs/qrsart-github-icon.png" alt="Logo" height=120>
+</p>
+<h1 align="center">qrsart</h1>
+<h3 align="center">generate QR codes with aesthetic precision</h3>
 
-> Generate QR codes with aesthetic precision
+<p align="center">
+<a href="https://bundlephobia.com/package/qrsart" target="_new"><img height=20 src="https://img.shields.io/bundlephobia/minzip/qrsart" /></a>
+<a href="https://www.npmjs.com/package/qrsart" target="_new"><img height=20 src="https://img.shields.io/npm/v/qrsart" /></a>
+</p>
+
+---
 
 **Benefits**:
+
 - No dependencies
 - Optimal data segmentation
 - Labeled grid output
@@ -10,6 +20,7 @@
 - Isomorphic: Works in browser / NodeJS / Bun
 
 **Drawbacks**:
+
 - No kanji support
 - API not final (just getting started)
 - Not perf optimized (yet)
@@ -51,6 +62,8 @@ console.log(qr)
 //   grid: PixelGrid,
 // }
 ```
+
+To see an image generation example, check out [examples](https://github.com/m4r-sh/qrsart/tree/main/examples)
 
 ## API
 

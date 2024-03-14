@@ -8,6 +8,7 @@ tests/
 examples/
 scripts/
 notes/
+docs/
 tsconfig.json
 package-lock.json
 bun.lockb
