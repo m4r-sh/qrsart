@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/m4r-sh/qrsart/main/docs/qrsart-github-icon.png" alt="Logo" height=120>
+  <img src="https://raw.githubusercontent.com/m4r-sh/qrsart/main/docs/qrsart-github-icon.png" alt="Logo" height=150>
 </p>
 <h1 align="center">qrsart</h1>
 <h3 align="center">generate QR codes with aesthetic precision</h3>
