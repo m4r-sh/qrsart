@@ -1,8 +1,0 @@
-{
-  "name": "qrsart-examples",
-  "type": "module",
-  "devDependencies": {
-    "@napi-rs/canvas": "^0.1.51",
-    "hueman": "^2.1.3"
-  }
-}

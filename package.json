@@ -27,8 +27,14 @@
       "node": "./dist/index.js",
       "browser": "./dist/index.min.js",
       "import": "./dist/index.js",
-      "require": "./dist/index.js",
-      "types": "./types/index.d.ts"
+      "require": "./dist/index.js"
+    },
+    "./search": {
+      "bun": "./dist/search/index.js",
+      "node": "./dist/search/index.js",
+      "browser": "./dist/search/index.min.js",
+      "import": "./dist/search/index.js",
+      "require": "./dist/search/index.js"
     }
   }
 }

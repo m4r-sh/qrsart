@@ -1,29 +1,32 @@
-import { findVersion } from "./segments.js";
-import { QRCode } from "./QRCode.js";
-import { PixelGrid } from "./PixelGrid.js";
-import { permuteURL, permuteWIFI } from "./permute.js";
+import { findOptimalSegmentation, findAllSegmentations, constructCodewords } from "./segments"
+import { QRCode } from "./QRCode"
+import { Grid } from "./Grid"
 
 function createQR(data="",{
   minVersion=1,
   maxVersion=40,
-  minEcl='low',
+  minEcl=0,
+  maxEcl=3,
+  ecl=null,
+  version=null,
   mask=0
 }={}){
-  let { version, ecl, bitstring } = findVersion(data, { minVersion, minEcl, maxVersion })
+  if (version) minVersion = maxVersion = version;
+  if (ecl) minEcl = maxEcl = ecl;
+  let { version, ecl, bitstring } = findOptimalSegmentation(data, { minVersion, minEcl, maxEcl, maxVersion })
   return new QRCode({
-    data,
+    mask,
     version,
     ecl,
-    mask,
     bitstring
   })
 }
 
 export { 
   QRCode,
-  findVersion,
   createQR,
-  PixelGrid,
-  permuteURL,
-  permuteWIFI
+  Grid,
+  findOptimalSegmentation,
+  findAllSegmentations,
+  constructCodewords
 }

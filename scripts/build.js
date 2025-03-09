@@ -13,6 +13,30 @@ async function build(){
       outdir: './dist',
       minify: false,
       naming: '[dir]/[name].[ext]'
+    }),
+    Bun.build({
+      entrypoints: ['./src/search/index.js'],
+      outdir: './dist/search',
+      minify: true,
+      naming: '[dir]/[name].min.[ext]'
+    }),
+    Bun.build({
+      entrypoints: ['./src/search/index.js'],
+      outdir: './dist/search',
+      minify: false,
+      naming: '[dir]/[name].[ext]'
+    }),
+    Bun.build({
+      entrypoints: ['./src/lite.js'],
+      outdir: './dist',
+      minify: true,
+      naming: '[dir]/[name].min.[ext]'
+    }),
+    Bun.build({
+      entrypoints: ['./src/lite.js'],
+      outdir: './dist',
+      minify: false,
+      naming: '[dir]/[name].[ext]'
     })
   ])
   res_arr.forEach(res => {

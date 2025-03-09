@@ -1,148 +1,149 @@
-import { ecls } from "./utils/ecls.js";
+import { ECLS } from "./utils/ecls.js";
 import { modes, appendBits } from "./utils/modes.js";
 import { reedSolomonComputeDivisor, reedSolomonComputeRemainder } from "./utils/reed-solomon.js";
 
-export function findVersion(str,{
-  minVersion=1,
-  maxVersion=40,
-  minEcl='low'
+export function findOptimalSegmentation(str,{
+  minVersion = 1,
+  maxVersion = 40,
+  minEcl = 0,
+  maxEcl = 3
 }={}){
   let version = minVersion;
   let ecl = minEcl;
-  let dataUsedBits;
-  let segs;
-  for(;version <= maxVersion;version++){
-    const dataCapacityBits = getNumDataCodewords(version,ecl) * 8;
-    if(version == minVersion || version == 10 || version == 27){
-      segs = optimalSegs(str,version)
-    }
-    const usedBits = segs.size
-    if(usedBits <= dataCapacityBits){
-      dataUsedBits = usedBits
-      break;
-    }
-  }
-  if(!dataUsedBits){
-    throw Error("Data too long")
+  let minimalSeg;
+
+
+  if (modes['numeric'].charCost('1') * str.length > getNumDataCodewords(maxVersion, ecl) * 8) {
+    throw new Error('Data too long');
   }
 
-  let ecls = ['low','medium','quartile','high']
-  let higher_ecls = ecls.slice(ecls.indexOf(minEcl)+1)
-  for(const new_ecl of higher_ecls){
-    if(dataUsedBits <= getNumDataCodewords(version,new_ecl) * 8){
-      ecl = new_ecl
+  // Find the smallest version that fits the minimal segmentation
+  for (; version <= maxVersion; version++) {
+    const dataCapacityBits = getNumDataCodewords(version, ecl) * 8;
+    if(version == minVersion || version == 10 || version == 27){
+      minimalSeg = findMinimalSegmentation(str, version);
+    }
+    if (minimalSeg && minimalSeg.cost <= dataCapacityBits) break;
+  }
+
+  if (!minimalSeg || minimalSeg.cost > getNumDataCodewords(version, ecl) * 8 || version > maxVersion) {
+    throw new Error('Data too long');
+  }
+
+  // Maximize ECL
+  for (let i = ecl + 1; i <= maxEcl; i++) {
+    if(minimalSeg.cost <= getNumDataCodewords(version, i) * 8){
+      ecl = i
     } else break;
   }
 
-  return { version, ecl, bitstring: construct_bitstring(str, segs.steps,version,ecl) }
-
-  
+  return {
+    version,
+    ecl,
+    bitstring: constructCodewords(str, minimalSeg.steps, version, ecl),
+    cost: minimalSeg.cost,
+    steps: minimalSeg.steps,
+    budget: getNumDataCodewords(version, ecl) * 8
+  };
 }
-// return the segment with the lowest length
-// TODO: actually construct segment, no need to wait for that
-export function optimalSegs(str, v=1){
-  const headCosts = {
-    byte: (4 + modes.byte.numCharCountBits(v)) * 6,
-    alpha: (4 + modes.alpha.numCharCountBits(v)) * 6,
-    numeric: (4 + modes.numeric.numCharCountBits(v)) * 6
+
+
+export function findAllSegmentations(str, version, ecl) {
+  const dataCapacityBits = getNumDataCodewords(version, ecl) * 8;
+  const n = str.length;
+  let paths = [{ cost: 0, steps: [], mode: '' }];
+
+  for (let i = 0; i < n; i++) {
+    const newPaths = [];
+    for (const path of paths) {
+      for (const mode of ['numeric', 'alpha', 'byte']) {
+        const charCost = modes[mode].charCost(str[i])
+        if (charCost === Infinity) continue;
+
+        const headerBits = path.mode === mode ? 0 : 4 + modes[mode].numCharCountBits(version);
+        const newCost = path.cost + headerBits + charCost;
+        if (newCost > dataCapacityBits) continue;
+
+        newPaths.push({
+          cost: newCost,
+          steps: [...path.steps, mode],
+          mode,
+        });
+      }
+    }
+    paths = newPaths;
   }
-  let possibilities = []
-  let charCosts = Array.from(str).map((char,i) => {
-    let cost = {
-      byte: countUtf8Bytes(str.codePointAt(i)) * 8 * 6
-    }
-    if(modes.alpha.test(char)){
-      cost.alpha = 33; // 5.5 bits per alphanumeric char
-    }
-    if(modes.numeric.test(char)){
-      cost.numeric = 20; // 3.33 bits per digit
-    }
-    return cost;
-  })
 
-  Object.keys(charCosts[0]).forEach(mode_type => {
-    possibilities.push({
-      size: headCosts[mode_type] + charCosts[0][mode_type],
-      steps: [mode_type]
-    })
-  })
-  for(let i = 1; i < charCosts.length; i++){
-    let costs = charCosts[i]
-    let new_possibilities = []
-    let min_size = Infinity
-    for(let p = 0; p < possibilities.length; p++){
-      let pos = possibilities[p]
-      Object.keys(costs).forEach(mode_type => {
-        // TODO: clean this up. For multi-byte unicode characters
-        let new_steps = mode_type == 'byte' ? Array(costs[mode_type]/48).fill(mode_type) : [mode_type]
-        let new_size = pos.steps[pos.steps.length-1] == mode_type
-          // if no change in mode type
-          ? (costs[mode_type] + pos.size)
-          // else, include header cost and padding to end of last segment sum
-          : (headCosts[mode_type] + Math.floor((pos.size+5) / 6) * 6 + costs[mode_type])
-        min_size = Math.min(min_size,new_size)
-        new_possibilities.push({
-          size:  new_size,
-          steps: [...pos.steps,...new_steps]
-        })
-      })
+  return paths.map(({ steps, cost }) => ({
+    steps,
+    cost,
+    bitstring: constructCodewords(str, steps, version, ecl)
+  }));
+}
+
+
+function findMinimalSegmentation(str, version) {
+  const n = str.length;
+  // dp[i][mode] stores the minimal cost and steps up to position i ending in mode
+  const dp = Array(n + 1).fill().map(() => ({}));
+  dp[0] = { '': { cost: 0, steps: [] } };
+  let count = 0
+  for (let i = 1; i <= n; i++) {
+    for (const prevMode in dp[i - 1]) {
+      const prev = dp[i - 1][prevMode];
+      for (const mode of ['numeric', 'alpha', 'byte']) {
+        const charCost = modes[mode].charCost(str[i - 1]);
+        if (charCost === Infinity) continue;
+        const headerBits = prevMode === mode ? 0 : 4 + modes[mode].numCharCountBits(version);
+        const newCost = prev.cost + headerBits + charCost;
+        if (!dp[i][mode] || newCost < dp[i][mode].cost) {
+          dp[i][mode] = { cost: newCost, steps: [...prev.steps, mode] };
+        }
+      }
     }
-    // TODO: only include minimally necessary paths
-    possibilities = new_possibilities.filter(x => x.size <= min_size + [14,20,20][Math.floor((v+7)/17)] * 6)
   }
-  possibilities.sort((a,b) => a.size - b.size)
-  possibilities = possibilities.map(x => ({ steps: x.steps, size: Math.ceil(x.size / 6)}))
-  return possibilities[0]
-  
+
+  // Find the minimal cost among all modes at the end
+  const final = dp[n];
+  let minCost = Infinity;
+  let bestMode = '';
+  for (const mode in final) {
+    if (final[mode].cost < minCost) {
+      minCost = final[mode].cost;
+      bestMode = mode;
+    }
+  }
+
+  return final[bestMode] ? {
+    steps: final[bestMode].steps,
+    cost: final[bestMode].cost
+  } : null;
 }
 
-// TODO: when performing a huge search, would be good to include all matching ecls
-// TODO: also, include going up some version #'s
-function sorted_segs(str,v,sortFn){
-
-}
-
-
-function construct_bitstring(str, steps, version, ecl){
-
-  // Pulled from original encode_segments
+export function constructCodewords(str, steps, version, ecl) {
 
   let segs = splitIntoSegments(str,steps)
-
-  // Concatenate all segments to create the data bit string
   let bb = [];
-  for (const seg of segs) {
-      appendBits(modes[seg.mode].modeBits, 4, bb);
-      appendBits(seg.numChars, modes[seg.mode].numCharCountBits(version), bb);
-      for (const b of seg.getData())
+  for (const { mode, str } of segs) {
+      appendBits(modes[mode].modeBits, 4, bb);
+      appendBits(str.length, modes[mode].numCharCountBits(version), bb);
+      for (const b of modes[mode].write(str))
           bb.push(b);
   }
-  // TODO: Opportunity for custom
-  // Add terminator and pad up to a byte if applicable
   const dataCapacityBits = getNumDataCodewords(version, ecl) * 8;
   appendBits(0, Math.min(4, dataCapacityBits - bb.length), bb);
   appendBits(0, (8 - bb.length % 8) % 8, bb);
-  // Pad with alternating bytes until data capacity is reached
   for (let padByte = 0xEC; bb.length < dataCapacityBits; padByte ^= 0xEC ^ 0x11)
       appendBits(padByte, 8, bb);
-  // Pack bits into bytes in big endian
   let dataCodewords = [];
   while (dataCodewords.length * 8 < bb.length)
       dataCodewords.push(0);
   bb.forEach((b, i) => dataCodewords[i >>> 3] |= b << (7 - (i & 7)));
-
-
-
-  // TODO: start here
-  // pulled from interleave()
-  // Calculate parameter numbers
-  const numBlocks = ecls[ecl].num_ecc_blocks[version]
-  const blockEccLen = ecls[ecl].codewords_per_block[version]
+  const numBlocks = ECLS[ecl].num_ecc_blocks[version]
+  const blockEccLen = ECLS[ecl].codewords_per_block[version]
   const rawCodewords = Math.floor(getNumRawDataModules(version) / 8);
   const numShortBlocks = numBlocks - rawCodewords % numBlocks;
   const shortBlockLen = Math.floor(rawCodewords / numBlocks);
-  // TODO: OPPORTUNITY FOR CUSTOM mayb? 
-  // Split data into blocks and append ECC to each block
   let blocks = [];
   const rsDiv = reedSolomonComputeDivisor(blockEccLen);
   for (let i = 0, k = 0; i < numBlocks; i++) {
@@ -153,29 +154,18 @@ function construct_bitstring(str, steps, version, ecl){
           dat.push(0);
       blocks.push(dat.concat(ecc));
   }
-  // Interleave (not concatenate) the bytes from every block into a single sequence
   let result = [];
   for (let i = 0; i < blocks[0].length; i++) {
       blocks.forEach((block, j) => {
-          // Skip the padding byte in short blocks
           if (i != shortBlockLen - blockEccLen || j >= numShortBlocks)
               result.push(block[i]);
       });
   }
-  return result.map(n => n.toString(2).padStart(8,'0')).join('')
+  return new Uint8Array(result);
 }
 
 
-function countUtf8Bytes(cp=0x80){
-  if (cp < 0) throw 'invalid'
-  else if (cp < 0x80) return 1;
-  else if (cp < 0x800) return 2;
-  else if (cp < 0x10000) return 3;
-  else if (cp < 0x110000) return 4;
-  else throw 'invalid'
-}
-
-function getNumRawDataModules(ver) {
+export function getNumRawDataModules(ver) {
   let result = (16 * ver + 128) * ver + 64;
   if (ver >= 2) {
     const numAlign = Math.floor(ver / 7) + 2;
@@ -187,7 +177,7 @@ function getNumRawDataModules(ver) {
 
 function getNumDataCodewords(ver, ecl) {
   return Math.floor(getNumRawDataModules(ver) / 8) -
-      ecls[ecl].codewords_per_block[ver] * ecls[ecl].num_ecc_blocks[ver]
+      ECLS[ecl].codewords_per_block[ver] * ECLS[ecl].num_ecc_blocks[ver]
 }
 
 export function splitIntoSegments(str="",steps=[]){
@@ -196,9 +186,10 @@ export function splitIntoSegments(str="",steps=[]){
   let start = 0
   for(let i = 1; i <= str.length; i++){
     if(i >= str.length || steps[i] != curMode){
-      let s = str.slice(start,i)
-
-      segments.push(modes[curMode].write(s))
+      segments.push({
+        mode: curMode,
+        str: str.slice(start,i),
+      })
       curMode = steps[i];
       start = i;
     }

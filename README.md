@@ -1,196 +1,93 @@
-<p align="center">
-  <img src="https://raw.githubusercontent.com/m4r-sh/qrsart/main/docs/qrsart-github-icon.png" alt="Logo" height=150>
-</p>
-<h1 align="center">qrsart</h1>
-<h3 align="center">generate QR codes with aesthetic precision</h3>
+# qrsart
 
-<p align="center">
-<a href="https://bundlephobia.com/package/qrsart" target="_new"><img height=20 src="https://img.shields.io/bundlephobia/minzip/qrsart" /></a>
-<a href="https://www.npmjs.com/package/qrsart" target="_new"><img height=20 src="https://img.shields.io/npm/v/qrsart" /></a>
-</p>
+Generate QR codes with **aesthetic precision** and **optimal data segmentation**. No dependencies, fast, low overhead.
 
----
+## Features
 
-**Benefits**:
+- **Precise QR Code Generation** – Control every aspect of the QR structure
+- **Optimal Data Segmentation** – Automatically finds the best encoding strategy
+- **Labeled Grid Outputs** – Visualize QR sub-structures
+- **Permutation Search** – Explore equivalent encodings for predefined patterns
 
-- No dependencies
-- Optimal data segmentation
-- Labeled grid output
-- Built-in permutation logic
-- Isomorphic: Works in browser / NodeJS / Bun
+## Exports
 
-**Drawbacks**:
+- **`qrsart`** - Main package for creating and rendering codes
 
-- No kanji support
-- API not final (just getting started)
-- Not perf optimized (yet)
-
-## Install
-
+```js
+import { createQR, QRCode, Grid, findOptimalSegmentation, findAllSegmentations, constructCodewords } from 'qrsart'
 ```
+
+- **`qrsart/search`** - Additional helpers to iterate over equivalent encodings.
+
+```js
+import { search, batch, permute } from 'qrsart/search'
+```
+
+- **`qrsart/lite`** - Only QRCode and Grid classes. Bring your own segmentation.
+
+```js
+import { QRCode, Grid } from 'qrsart/lite'
+```
+
+## Installation
+
+```sh
 bun install qrsart
 ```
 
 ## Usage
 
+### Basic QR Code Generation
+
 ```js
-import { createQR } from 'qrsart'
+import { createQR } from 'qrsart';
 
-let qr = createQR('HTTPS://GITHUB.COM/m4r-sh/qrsart',{
-  minVersion: 2, // 1 - 40
-  minEcl: 'medium', // 'low','medium','quartile','high'
-  mask: 0, // 0 - 7
+// force specific version / ecl
+const hello_world_qr = createQR('Hello, World!', {
+  version: 1,
+  ecl: 2,
+  mask: 0
 })
-
-console.log(qr)
-
-// QRCode {
-//   version: 3,
-//   ecl: "quartile",
-//   mask: 0,
-//   data: "HTTPS://GITHUB.COM/m4r-sh/qrsart",
-//   size: 29,
-//   bitstring: "001000...110000",
-//   functional_grid: PixelGrid,
-//   finder_grid: PixelGrid,
-//   timing_grid: PixelGrid,
-//   alignment_positions: PixelGrid,
-//   alignment_grid: PixelGrid,
-//   format_grid: PixelGrid,
-//   version_grid: PixelGrid,
-//   data_grid: PixelGrid,
-//   grid: PixelGrid,
-// }
+// allow version / ecl ranges
+const hey_there_qr = createQR('Hey there', {
+  minVersion: 2,
+  maxVersion: 4,
+  minEcl: 1,
+  maxEcl: 3,
+  mask: 2
+})
 ```
 
-To see an image generation example, check out [examples](https://github.com/m4r-sh/qrsart/tree/main/examples)
+### QR Grid Operations
 
-## API
+```js
+import { createQR, Grid } from 'qrsart'
 
-### createQR(data, options)
-Returns: `QRCode`
+let my_qr = createQR('Hi Github')
+let crucial_grid = Grid.union(my_qr.alignment_grid, my_qr.timing_grid, my_qr.finder_grid)
+let rest_grid = Grid.erase(my_qr.grid,crucial_grid)
+for(let [x,y] of crucial_grid.tiles()){
+  ctx.fillStyle = crucial_grid.get(x,y) ? '#000' : '#fff'
+  ctx.fillRect(x,y,1,1)
+}
+for(let [x,y] of rest_grid.tiles()){
+  ctx.fillStyle = crucial_grid.get(x,y) ? '#228' : '#fff'
+  ctx.fillRect(x,y,1,1)
+}
+```
 
-Creates a QRCode object which can be used in custom render logic
+### Segmentation (advanced)
 
-#### data
-Type: `String`
+```js
+import { findOptimalSegmentation, findAllSegmentations, construct_codewords } from 'qrsart';
 
-The raw text to be encoded into the QR Code
+// get segmentation that uses fewest bits
+const { version, ecl, bitstring, steps, cost, budget } = findOptimalSegmentation('Hello, world!');
 
-#### options
-Type: `Object`
+// get all segmentations that fit in this version & ecl
+const all_greetings = findAllSegmentations('Hello, world!',version, ecl)
+```
 
-- `minVersion`: number (0 - 40)
-- `maxVersion`: number (0 - 40)
-- `mask`: number (0 - 8)
-- `minEcl`: string ('low' | 'medium' | 'quartile' | 'high')
+## License
 
----
-
-### PixelGrid(w,h)
-
-Helper class for 2D matrix of pixels
-
-- `.setPixel(x,y,v)`
-- `.getPixel(x,y)`
-- `.usedPixel(x,y)`
-- `PixelGrid.combine(...grids)`
-
----
-
-### QRCode({ bitstring, version, ecl, mask, data })
-
-Helper class for QR Code data
-
-- `.size`
-- `.data`
-- `.grid`
-- `.data_grid`
-- `.functional_grid`
-- `.finder_grid`
-- `.alignment_grid`
-- `.timing_grid`
-- `.format_grid`
-- `.version_grid`
-
----
-
-### permuteURL(url, options)
-Returns: `[String]`
-
-Permutes a URL into an array of all possible variations of the same URL.
-
-#### url
-Type: `String`
-
-A URL, i.e. `https://github.com/m4r-sh` or `m4r.sh`
-
-#### options
-Type: `Object`
-
-Options for URL variation. Caps options permute the substring into every possible uppercase/lowercase combination.
-
-- `protocols`: `['http','https']`
-- `protocol_caps`: `true`
-- `domain_caps`: `true`
-- `path_caps`: `false`
-
----
-
-### permuteWIFI(name, pwd)
-Returns: `[String]`
-
-Permutes a WiFi name/pwd into an array of all possible encoding orders.
-
-#### name
-Type: `String`
-
-The name of the WiFi network
-
-#### pwd
-Type: `String`
-
-The password of the WiFi network
-
-## Examples
-
-<table>
-  <tr>
-    <td>
-      <img src="https://github.com/m4r-sh/qrsart/blob/main/examples/tetris/output.png" width="300"/>
-    </td>
-    <td>
-      <h3>Tetromino Shape Packing</h3>
-      <a href="https://github.com/m4r-sh/qrsart/tree/main/examples/tetris">Example Code</a>
-    </td>
-  </tr>
-  <tr>
-    <td>
-      <img src="https://github.com/m4r-sh/qrsart/blob/main/examples/debug/output.png" width="300"/>
-    </td>
-    <td>
-      <h3>Debug View</h3>
-      <a href="https://github.com/m4r-sh/qrsart/tree/main/examples/debug">Example Code</a>
-    </td>
-  </tr>
-  <tr>
-    <td>
-      <img src="https://github.com/m4r-sh/qrsart/blob/main/examples/wifi/output.png" width="300"/>
-    </td>
-    <td>
-      <h3>Tilted WiFi</h3>
-      <a href="https://github.com/m4r-sh/qrsart/tree/main/examples/wifi">Example Code</a>
-    </td>
-  </tr>
-</table>
-
-## Credits
-
-- Nayuki's QR Code Generator
-  - https://www.nayuki.io/page/creating-a-qr-code-step-by-step
-  - https://www.nayuki.io/page/optimal-text-segmentation-for-qr-codes
-- Russ Cox's Qart Codes
-  - https://research.swtch.com/qart
-  - https://research.swtch.com/qr/draw/
-- QRazyBox
-  - https://merri.cx/qrazybox/help/getting-started/about-qr-code.html
+MIT
