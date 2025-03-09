@@ -1,8 +1,9 @@
 import { MinQueue } from './MinQueue'
 import { permutations } from "./permutations"
 import { QRCode } from '../QRCode'
-import { findAllSegmentations } from '../segments'
+import { findAllSegmentations, findOptimalSegmentation, constructCodewords } from '../segments'
 
+export { findAllSegmentations, findOptimalSegmentation, constructCodewords }
 
 export function search(batch,priorityFn,{
   capacity= 20,

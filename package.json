@@ -35,6 +35,13 @@
       "browser": "./dist/search/index.min.js",
       "import": "./dist/search/index.js",
       "require": "./dist/search/index.js"
+    },
+    "./lite": {
+      "bun": "./dist/lite.js",
+      "node": "./dist/lite.js",
+      "browser": "./dist/lite.min.js",
+      "import": "./dist/lite.js",
+      "require": "./dist/lite.js"
     }
   }
 }

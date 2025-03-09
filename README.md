@@ -11,23 +11,24 @@ Generate QR codes with **aesthetic precision** and **optimal data segmentation**
 
 ## Exports
 
-- **`qrsart`** - Main package for creating and rendering codes
+**`qrsart`** - Main package for creating and rendering codes
 
 ```js
 import { createQR, QRCode, Grid, findOptimalSegmentation, findAllSegmentations, constructCodewords } from 'qrsart'
 ```
 
-- **`qrsart/search`** - Additional helpers to iterate over equivalent encodings.
+**`qrsart/search`** - Search helpers to iterate over equivalent encodings
 
 ```js
-import { search, batch, permute } from 'qrsart/search'
+import { search, batch, permute, findOptimalSegmentation, findAllSegmentations, constructCodewords } from 'qrsart/search'
 ```
 
-- **`qrsart/lite`** - Only QRCode and Grid classes. Bring your own segmentation.
+**`qrsart/lite`** - Only QRCode and Grid classes. Bring your own segmentation.
 
 ```js
 import { QRCode, Grid } from 'qrsart/lite'
 ```
+
 
 ## Installation
 
