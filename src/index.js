@@ -1,4 +1,4 @@
-import { findOptimalSegmentation, findAllSegmentations, constructCodewords } from "./segments"
+import { optimalStrategy, allStrategies, constructCodewords } from "./segments"
 import { QRCode } from "./QRCode"
 import { Grid } from "./Grid"
 
@@ -13,20 +13,20 @@ function createQR(data="",{
 }={}){
   if (version) minVersion = maxVersion = version;
   if (ecl) minEcl = maxEcl = ecl;
-  let { version, ecl, bitstring } = findOptimalSegmentation(data, { minVersion, minEcl, maxEcl, maxVersion })
+  let opt = optimalStrategy(data, { minVersion, minEcl, maxEcl, maxVersion })
   return new QRCode({
     mask,
-    version,
-    ecl,
-    bitstring
+    version: opt.version,
+    ecl: opt.ecl,
+    codewords: opt.codewords
   })
 }
 
 export { 
   QRCode,
-  createQR,
   Grid,
-  findOptimalSegmentation,
-  findAllSegmentations,
+  createQR,
+  optimalStrategy,
+  allStrategies,
   constructCodewords
 }

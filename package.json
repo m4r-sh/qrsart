@@ -1,7 +1,7 @@
 {
-  "version": "0.3.1",
+  "version": "1.0.0",
   "name": "qrsart",
-  "description": "Generate QR codes with precision",
+  "description": "Generate QR codes with aesthetic precision",
   "author": {
     "name": "m4rsh",
     "email": "me@m4r.sh",
@@ -30,11 +30,11 @@
       "require": "./dist/index.js"
     },
     "./search": {
-      "bun": "./dist/search/index.js",
-      "node": "./dist/search/index.js",
-      "browser": "./dist/search/index.min.js",
-      "import": "./dist/search/index.js",
-      "require": "./dist/search/index.js"
+      "bun": "./dist/search.js",
+      "node": "./dist/search.js",
+      "browser": "./dist/search.min.js",
+      "import": "./dist/search.js",
+      "require": "./dist/search.js"
     },
     "./lite": {
       "bun": "./dist/lite.js",

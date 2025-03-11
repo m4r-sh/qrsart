@@ -48,14 +48,15 @@ export const permutations = {
     domainCaps=false,
     pathCaps=false
   }={}) {
-    const parsed = new URL(url.startsWith('https') ? url : `https://${url}`);
-    const protocolComp = permutations.case(parsed.protocol, { enableCaps: protocolCaps });
-    const domainComp = permutations.case(parsed.hostname, { enableCaps: domainCaps });
-    const pathComp = permutations.case(parsed.pathname || '/', { enableCaps: pathCaps });
-    const combined = permutations.group([protocolComp, '//', domainComp, pathComp]);
+    const [_,protocol,domain,pathname,query,hash] = url.match(/^(https?:\/\/)?([^\/]+)(\/[^?#]*)?(\?[^#]*)?(#.*)?$/i);
+    if(!protocol || !domain){ throw 'invalid url' }
+    const protocolComp = permutations.case(protocol, { enableCaps: protocolCaps });
+    const domainComp = permutations.case(domain, { enableCaps: domainCaps });
+    const pathComp = permutations.case(pathname || '/', { enableCaps: pathCaps });
+    const combined = permutations.group([protocolComp, domainComp, pathComp]);
     return {
       total: combined.total,
-      get: (k) => combined.get(k) + (parsed.search || '') + (parsed.hash || '')
+      get: (k) => combined.get(k) + (query || '') + (hash || '')
     }
   },
   // TODO

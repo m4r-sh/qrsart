@@ -57,25 +57,25 @@ test('permuteGroup: multiple components with static string', () => {
 
 // permuteURL Tests
 test('permuteURL: no caps enabled', () => {
-  const comp = permuteURL('m4r.sh/tetris',{
+  const comp = permuteURL('https://qrs.art/tetris',{
     protocolCaps: false,
     domainCaps: false,
     pathCaps: false
   });
   expect(comp.total).toBe(1);
-  expect(comp.get(0)).toBe('https://m4r.sh/tetris');
+  expect(comp.get(0)).toBe('https://qrs.art/tetris');
 });
 
 test('permuteURL: protocol and path caps enabled', () => {
-  const comp = permuteURL('m4r.sh/tetris',{
+  const comp = permuteURL('https://qrs.art/tetris',{
     protocolCaps: true,
     domainCaps: false,
     pathCaps: true
   });
   // protocol 'https' (5 letters) = 2^5, path 'tetris' (6 letters) = 2^6, domain static = 1
   expect(comp.total).toBe(2048); // 2^5 * 2^6 = 2048
-  expect(comp.get(0)).toBe('https://m4r.sh/tetris');
-  expect(comp.get(1)).toBe('https://m4r.sh/Tetris');
+  expect(comp.get(0)).toBe('https://qrs.art/tetris');
+  expect(comp.get(1)).toBe('https://qrs.art/Tetris');
   const results = new Set();
   for (let k = 0; k < comp.total; k++) {
     results.add(comp.get(k));

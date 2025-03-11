@@ -47,10 +47,9 @@ export class Grid {
         if (!isUsed) continue; // Skip unused tiles if onlyUsed is true
 
         const isOn = byte & (1 << shift);
-        if (onlyOn === true && !isOn) continue; // Skip off tiles if onlyOn is true
-        if (onlyOn === false && isOn) continue; // Skip on tiles if onlyOn is false
-
-        yield [idx % w, Math.floor(idx / w)];
+        if(onlyOn == null || (!onlyOn == !isOn)){
+          yield [idx % w, Math.floor(idx / w)]
+        }
       }
     }
   }

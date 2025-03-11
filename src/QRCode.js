@@ -10,12 +10,12 @@ export class QRCode {
     version=2,
     ecl=0,
     mask=0,
-    bitstring=new Uint8Array()
+    codewords=new Uint8Array()
   }={}){
     this.version = version
     this.ecl = ecl
     this.mask = mask
-    this.bitstring = bitstring
+    this.codewords = codewords
   }
 
   get size(){
@@ -138,7 +138,7 @@ export class QRCode {
   }
 
   get data_grid() {
-    let { size, functional_grid, bitstring, mask } = this;
+    let { size, functional_grid, codewords, mask } = this;
     const grid = new Grid(size, size);
     let i = 0;
   
@@ -155,10 +155,10 @@ export class QRCode {
           if (!isFunctional) {
             
             let dat = 0;
-            if (i < bitstring.length * 8) {
+            if (i < codewords.length * 8) {
               const byteIndex = Math.floor(i / 8);
               const bitIndex = 7 - (i % 8);
-              dat = (bitstring[byteIndex] >> bitIndex) & 1;
+              dat = (codewords[byteIndex] >> bitIndex) & 1;
             }
             dat ^= MASK_SHAPES[mask](x, y);
             grid.set(x, y, dat);
@@ -175,22 +175,23 @@ export class QRCode {
     return Grid.union(functional_grid, data_grid)
   }
 
-  static save(code) {
-    let { version, ecl, mask, bitstring } = code
-    return new Uint8Array([
-      version & 0xFF,
-      ((ecl & 0b11) << 3) | ((mask & 0b111) << 5),
-      ...bitstring
-    ])
+  static create(){
+    
   }
-  
-  static load(data) {
-    return new QRCode({
-      version: data[0],
-      ecl: (data[1] >> 3) & 0b11,
-      mask: (data[1] >> 5) & 0b111,
-      bitstring: data.slice(2)
-    })
+
+  static save(){
+
+  }
+
+  static load(){
+
+  }
+
+  toString(){
+    return `(QRCode) version:${this.version}, ecl:${this.ecl}, mask:${this.mask}`
+  }
+  [Bun.inspect.custom](){
+    return `(QRCode) version:${this.version}, ecl:${this.ecl}, mask:${this.mask}`
   }
 }
 

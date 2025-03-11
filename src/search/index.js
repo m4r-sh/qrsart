@@ -1,9 +1,9 @@
 import { MinQueue } from './MinQueue'
 import { permutations } from "./permutations"
 import { QRCode } from '../QRCode'
-import { findAllSegmentations, findOptimalSegmentation, constructCodewords } from '../segments'
+import { allStrategies, optimalStrategy, constructCodewords } from '../segments'
 
-export { findAllSegmentations, findOptimalSegmentation, constructCodewords }
+export { allStrategies, optimalStrategy, constructCodewords }
 
 export function search(batch,priorityFn,{
   capacity= 20,
@@ -13,33 +13,42 @@ export function search(batch,priorityFn,{
 
   const queue = new MinQueue(capacity)
   let queue_items = []
+
   
   for(let item of batch){
-    for(let {bitstring} of findAllSegmentations(item,version,ecl)){
+    let all_segs = allStrategies(item,version,ecl)
+    let encodings = all_segs.map(s => constructCodewords(item,s.steps,version,ecl))
+    for(let codewords of encodings){
       for(let m = 0; m < 8; m++){
-        let qr_params = { version, ecl, mask: m, bitstring }
+        let qr_params = { version, ecl, mask: m, codewords }
         let qr = new QRCode(qr_params)
         let { score, obj } = priorityFn(qr);
-        queue.consider(score, { obj, qr_params})
+        queue.consider(score, { qr: QRCode.save(qr), obj, item })
       }
     }
   }
 
-  return queue.extractAll()
+  return queue.extractAll().map(x => ({
+    score: x.score,
+    qr: x.object.qr,
+    computed: x.object.obj,
+    data: x.object.item
+  }))
 }
 
 export function permute(type='url',value='https://qrs.art',options={}){
   return permutations[type](value,options)
 }
 
-export function batch({
-  permutation = {},
+export function batch(permutation = {},{
   start = 0,
   stride = 1,
-  limit=1000,
-  loop=20_000
-}){
+  limit=null,
+  loop=null
+}={}){
   let { total, get } = permutation
+  if(limit == null){ limit = total }
+  if(loop == null){ loop = total }
   let results = []
   for(let i = 0; i < limit; i++){
     let index = (start + i * stride) % loop

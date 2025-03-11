@@ -158,14 +158,17 @@ var permutations = {
     domainCaps = false,
     pathCaps = false
   } = {}) {
-    const parsed = new URL(url.startsWith("https") ? url : `https://${url}`);
-    const protocolComp = permutations.case(parsed.protocol, { enableCaps: protocolCaps });
-    const domainComp = permutations.case(parsed.hostname, { enableCaps: domainCaps });
-    const pathComp = permutations.case(parsed.pathname || "/", { enableCaps: pathCaps });
-    const combined = permutations.group([protocolComp, "//", domainComp, pathComp]);
+    const [_, protocol, domain, pathname, query, hash] = url.match(/^(https?:\/\/)?([^\/]+)(\/[^?#]*)?(\?[^#]*)?(#.*)?$/i);
+    if (!protocol || !domain) {
+      throw "invalid url";
+    }
+    const protocolComp = permutations.case(protocol, { enableCaps: protocolCaps });
+    const domainComp = permutations.case(domain, { enableCaps: domainCaps });
+    const pathComp = permutations.case(pathname || "/", { enableCaps: pathCaps });
+    const combined = permutations.group([protocolComp, domainComp, pathComp]);
     return {
       total: combined.total,
-      get: (k) => combined.get(k) + (parsed.search || "") + (parsed.hash || "")
+      get: (k) => combined.get(k) + (query || "") + (hash || "")
     };
   },
   phone(number = "0123456789", {
@@ -308,11 +311,9 @@ class Grid {
         if (!isUsed)
           continue;
         const isOn = byte & 1 << shift;
-        if (onlyOn === true && !isOn)
-          continue;
-        if (onlyOn === false && isOn)
-          continue;
-        yield [idx % w, Math.floor(idx / w)];
+        if (onlyOn == null || !onlyOn == !isOn) {
+          yield [idx % w, Math.floor(idx / w)];
+        }
       }
     }
   }
@@ -355,12 +356,12 @@ class QRCode {
     version = 2,
     ecl = 0,
     mask = 0,
-    bitstring = new Uint8Array
+    codewords = new Uint8Array
   } = {}) {
     this.version = version;
     this.ecl = ecl;
     this.mask = mask;
-    this.bitstring = bitstring;
+    this.codewords = codewords;
   }
   get size() {
     return this.version * 4 + 17;
@@ -466,7 +467,7 @@ class QRCode {
     return grid;
   }
   get data_grid() {
-    let { size, functional_grid, bitstring, mask } = this;
+    let { size, functional_grid, codewords, mask } = this;
     const grid = new Grid(size, size);
     let i = 0;
     for (let right = size - 1;right >= 1; right -= 2) {
@@ -481,10 +482,10 @@ class QRCode {
           const isFunctional = functional_grid.used(x, y);
           if (!isFunctional) {
             let dat = 0;
-            if (i < bitstring.length * 8) {
+            if (i < codewords.length * 8) {
               const byteIndex = Math.floor(i / 8);
               const bitIndex = 7 - i % 8;
-              dat = bitstring[byteIndex] >> bitIndex & 1;
+              dat = codewords[byteIndex] >> bitIndex & 1;
             }
             dat ^= MASK_SHAPES[mask](x, y);
             grid.set(x, y, dat);
@@ -499,21 +500,17 @@ class QRCode {
     let { functional_grid, data_grid } = this;
     return Grid.union(functional_grid, data_grid);
   }
-  static save(code) {
-    let { version, ecl, mask, bitstring } = code;
-    return new Uint8Array([
-      version & 255,
-      (ecl & 3) << 3 | (mask & 7) << 5,
-      ...bitstring
-    ]);
+  static create() {
   }
-  static load(data) {
-    return new QRCode({
-      version: data[0],
-      ecl: data[1] >> 3 & 3,
-      mask: data[1] >> 5 & 7,
-      bitstring: data.slice(2)
-    });
+  static save() {
+  }
+  static load() {
+  }
+  toString() {
+    return `(QRCode) version:${this.version}, ecl:${this.ecl}, mask:${this.mask}`;
+  }
+  [Bun.inspect.custom]() {
+    return `(QRCode) version:${this.version}, ecl:${this.ecl}, mask:${this.mask}`;
   }
 }
 
@@ -571,7 +568,11 @@ var modes = {
   }
 };
 function appendBits(val, len, bb) {
-  if (len < 0 || len > 31 || val >>> len != 0)
+  while (len > 31) {
+    appendBits(val >>> len - 31, 31, bb);
+    len -= 31;
+  }
+  if (val >>> len !== 0)
     throw new RangeError("Value out of range");
   for (let i = len - 1;i >= 0; i--)
     bb.push(val >>> i & 1);
@@ -636,7 +637,57 @@ function reedSolomonMultiply(x, y) {
 }
 
 // src/segments.js
-function findAllSegmentations(str, version, ecl) {
+function optimalStrategy(str, {
+  minVersion = 1,
+  maxVersion = 40,
+  minEcl = 0,
+  maxEcl = 3
+} = {}) {
+  let version = minVersion;
+  let ecl = minEcl;
+  let minimalSeg;
+  if (modes["numeric"].charCost("1") * str.length > getNumDataCodewords(maxVersion, ecl) * 8) {
+    throw new Error("Data too long");
+  }
+  for (;version <= maxVersion; version++) {
+    const dataCapacityBits = getNumDataCodewords(version, ecl) * 8;
+    if (version == minVersion || version == 10 || version == 27) {
+      minimalSeg = findMinimalSegmentation(str, version);
+    }
+    if (minimalSeg && minimalSeg.cost <= dataCapacityBits)
+      break;
+  }
+  if (!minimalSeg || minimalSeg.cost > getNumDataCodewords(version, ecl) * 8 || version > maxVersion) {
+    throw new Error("Data too long");
+  }
+  for (let i = ecl + 1;i <= maxEcl; i++) {
+    if (minimalSeg.cost <= getNumDataCodewords(version, i) * 8) {
+      ecl = i;
+    } else
+      break;
+  }
+  return {
+    version,
+    ecl,
+    codewords: constructCodewords(str, minimalSeg.steps, version, ecl),
+    cost: minimalSeg.cost,
+    steps: minimalSeg.steps,
+    strategy: packStrategy(minimalSeg.steps),
+    budget: getNumDataCodewords(version, ecl) * 8
+  };
+}
+function packStrategy(steps) {
+  let arr = steps.map((mode) => ["byte", "numeric", "alpha", "kanji"].indexOf(mode));
+  const packedLength = Math.ceil(arr.length / 4);
+  const packed = new Uint8Array(packedLength);
+  for (let i = 0;i < arr.length; i++) {
+    const byteIndex = Math.floor(i / 4);
+    const shift = (3 - i % 4) * 2;
+    packed[byteIndex] |= (arr[i] & 3) << shift;
+  }
+  return packed;
+}
+function allStrategies(str, version, ecl) {
   const dataCapacityBits = getNumDataCodewords(version, ecl) * 8;
   const n = str.length;
   let paths = [{ cost: 0, steps: [], mode: "" }];
@@ -654,17 +705,48 @@ function findAllSegmentations(str, version, ecl) {
         newPaths.push({
           cost: newCost,
           steps: [...path.steps, mode],
+          strategy: packStrategy(path.steps),
           mode
         });
       }
     }
     paths = newPaths;
   }
-  return paths.map(({ steps, cost }) => ({
-    steps,
-    cost,
-    bitstring: constructCodewords(str, steps, version, ecl)
-  }));
+  return paths;
+}
+function findMinimalSegmentation(str, version) {
+  const n = str.length;
+  const dp = Array(n + 1).fill().map(() => ({}));
+  dp[0] = { "": { cost: 0, steps: [] } };
+  let count = 0;
+  for (let i = 1;i <= n; i++) {
+    for (const prevMode in dp[i - 1]) {
+      const prev = dp[i - 1][prevMode];
+      for (const mode of ["numeric", "alpha", "byte"]) {
+        const charCost = modes[mode].charCost(str[i - 1]);
+        if (charCost === Infinity)
+          continue;
+        const headerBits = prevMode === mode ? 0 : 4 + modes[mode].numCharCountBits(version);
+        const newCost = prev.cost + headerBits + charCost;
+        if (!dp[i][mode] || newCost < dp[i][mode].cost) {
+          dp[i][mode] = { cost: newCost, steps: [...prev.steps, mode] };
+        }
+      }
+    }
+  }
+  const final = dp[n];
+  let minCost = Infinity;
+  let bestMode = "";
+  for (const mode in final) {
+    if (final[mode].cost < minCost) {
+      minCost = final[mode].cost;
+      bestMode = mode;
+    }
+  }
+  return final[bestMode] ? {
+    steps: final[bestMode].steps,
+    cost: final[bestMode].cost
+  } : null;
 }
 function constructCodewords(str, steps, version, ecl) {
   let segs = splitIntoSegments(str, steps);
@@ -746,28 +828,40 @@ function search(batch, priorityFn, {
   const queue = new MinQueue(capacity);
   let queue_items = [];
   for (let item of batch) {
-    for (let { bitstring } of findAllSegmentations(item, version, ecl)) {
+    let all_segs = allStrategies(item, version, ecl);
+    let encodings = all_segs.map((s) => constructCodewords(item, s.steps, version, ecl));
+    for (let codewords of encodings) {
       for (let m = 0;m < 8; m++) {
-        let qr_params = { version, ecl, mask: m, bitstring };
+        let qr_params = { version, ecl, mask: m, codewords };
         let qr = new QRCode(qr_params);
         let { score, obj } = priorityFn(qr);
-        queue.consider(score, { obj, qr_params });
+        queue.consider(score, { qr: QRCode.save(qr), obj, item });
       }
     }
   }
-  return queue.extractAll();
+  return queue.extractAll().map((x) => ({
+    score: x.score,
+    qr: x.object.qr,
+    computed: x.object.obj,
+    data: x.object.item
+  }));
 }
 function permute(type = "url", value = "https://qrs.art", options = {}) {
   return permutations[type](value, options);
 }
-function batch({
-  permutation = {},
+function batch(permutation = {}, {
   start = 0,
   stride = 1,
-  limit = 1000,
-  loop = 20000
-}) {
+  limit = null,
+  loop = null
+} = {}) {
   let { total, get } = permutation;
+  if (limit == null) {
+    limit = total;
+  }
+  if (loop == null) {
+    loop = total;
+  }
   let results = [];
   for (let i = 0;i < limit; i++) {
     let index = (start + i * stride) % loop;
@@ -781,5 +875,8 @@ function batch({
 export {
   search,
   permute,
-  batch
+  optimalStrategy,
+  constructCodewords,
+  batch,
+  allStrategies
 };

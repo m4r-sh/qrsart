@@ -51,13 +51,20 @@ export let modes = {
     }
   }
 }
-
 export function appendBits(val, len, bb) {
-  if (len < 0 || len > 31 || val >>> len != 0)
+  
+  while (len > 31) {
+    appendBits(val >>> (len - 31), 31, bb);
+    len -= 31;
+  }
+
+  if (val >>> len !== 0)
     throw new RangeError("Value out of range");
+
   for (let i = len - 1; i >= 0; i--) // Append bit by bit
     bb.push((val >>> i) & 1);
 }
+
 
 function countUtf8Bytes(c){
   let cp = c.codePointAt(0)

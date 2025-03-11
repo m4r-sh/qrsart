@@ -2,7 +2,7 @@ import { ECLS } from "./utils/ecls.js";
 import { modes, appendBits } from "./utils/modes.js";
 import { reedSolomonComputeDivisor, reedSolomonComputeRemainder } from "./utils/reed-solomon.js";
 
-export function findOptimalSegmentation(str,{
+export function optimalStrategy(str,{
   minVersion = 1,
   maxVersion = 40,
   minEcl = 0,
@@ -40,15 +40,41 @@ export function findOptimalSegmentation(str,{
   return {
     version,
     ecl,
-    bitstring: constructCodewords(str, minimalSeg.steps, version, ecl),
+    codewords: constructCodewords(str, minimalSeg.steps, version, ecl),
     cost: minimalSeg.cost,
     steps: minimalSeg.steps,
+    strategy: packStrategy(minimalSeg.steps),
     budget: getNumDataCodewords(version, ecl) * 8
   };
 }
 
+export function packStrategy(steps){
+  let arr = steps.map(mode => ['byte','numeric','alpha','kanji'].indexOf(mode))
+  const packedLength = Math.ceil(arr.length / 4);
+  const packed = new Uint8Array(packedLength);
+  for (let i = 0; i < arr.length; i++) {
+    const byteIndex = Math.floor(i / 4);
+    const shift = (3 - (i % 4)) * 2;  // Positions: 6, 4, 2, 0 bits
+    // Mask the value to 2 bits and shift it into position
+    packed[byteIndex] |= (arr[i] & 0x03) << shift;
+  }
+  return packed;
+}
 
-export function findAllSegmentations(str, version, ecl) {
+export function unpackStrategy(packed, originalLength){
+  const arr = [];
+  for (let i = 0; i < packed.length; i++) {
+    const byte = packed[i];
+    for (let shift = 6; shift >= 0; shift -= 2) {
+      if (arr.length < originalLength) {
+        arr.push((byte >> shift) & 0x03);
+      }
+    }
+  }
+  return arr.map(i => ['byte','numeric','alpha','kanji'][i]);
+}
+
+export function allStrategies(str, version, ecl) {
   const dataCapacityBits = getNumDataCodewords(version, ecl) * 8;
   const n = str.length;
   let paths = [{ cost: 0, steps: [], mode: '' }];
@@ -56,7 +82,7 @@ export function findAllSegmentations(str, version, ecl) {
   for (let i = 0; i < n; i++) {
     const newPaths = [];
     for (const path of paths) {
-      for (const mode of ['numeric', 'alpha', 'byte']) {
+      for (const mode of ['numeric','alpha','byte']) {
         const charCost = modes[mode].charCost(str[i])
         if (charCost === Infinity) continue;
 
@@ -67,6 +93,7 @@ export function findAllSegmentations(str, version, ecl) {
         newPaths.push({
           cost: newCost,
           steps: [...path.steps, mode],
+          strategy: packStrategy(path.steps),
           mode,
         });
       }
@@ -74,11 +101,8 @@ export function findAllSegmentations(str, version, ecl) {
     paths = newPaths;
   }
 
-  return paths.map(({ steps, cost }) => ({
-    steps,
-    cost,
-    bitstring: constructCodewords(str, steps, version, ecl)
-  }));
+
+  return paths
 }
 
 

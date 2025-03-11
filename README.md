@@ -1,32 +1,29 @@
 # qrsart
 
-Generate QR codes with **aesthetic precision** and **optimal data segmentation**. No dependencies, fast, low overhead.
+Generate QR codes with **aesthetic precision**. No dependencies, fast, low overhead.
 
-## Features
-
-- **Precise QR Code Generation** – Control every aspect of the QR structure
-- **Optimal Data Segmentation** – Automatically finds the best encoding strategy
-- **Labeled Grid Outputs** – Visualize QR sub-structures
-- **Permutation Search** – Explore equivalent encodings for predefined patterns
+- **Optimal Data Encoding**
+- **Labeled Grid Outputs**
+- **Permutation Search**
 
 ## Exports
 
-**`qrsart`** - Main package for creating and rendering codes
+**`qrsart`** - Main package for creating codes
 
 ```js
-import { createQR, QRCode, Grid, findOptimalSegmentation, findAllSegmentations, constructCodewords } from 'qrsart'
+import { createQR, QRCode, Grid, optimalStrategy, constructCodewords } from 'qrsart'
 ```
 
-**`qrsart/search`** - Search helpers to iterate over equivalent encodings
+**`qrsart/search`** - Search helpers to iterate over encodings
 
 ```js
-import { search, batch, permute, findOptimalSegmentation, findAllSegmentations, constructCodewords } from 'qrsart/search'
+import { search, batch, permute, allStrategies } from 'qrsart/search'
 ```
 
-**`qrsart/lite`** - Only QRCode and Grid classes. Bring your own segmentation.
+**`qrsart/refine`** - Debug views and grid manipulation
 
 ```js
-import { QRCode, Grid } from 'qrsart/lite'
+import { gridInfo, modesInfo } from 'qrsart/refine'
 ```
 
 
@@ -77,17 +74,76 @@ for(let [x,y] of rest_grid.tiles()){
 }
 ```
 
-### Segmentation (advanced)
+### Segmentation
 
 ```js
-import { findOptimalSegmentation, findAllSegmentations, construct_codewords } from 'qrsart';
+import { optimalStrategy, allStrategies, construct_codewords } from 'qrsart';
 
 // get segmentation that uses fewest bits
-const { version, ecl, bitstring, steps, cost, budget } = findOptimalSegmentation('Hello, world!');
+const { version, ecl, codewords, steps, cost, budget } = optimalStrategy('Hello, world!');
 
 // get all segmentations that fit in this version & ecl
-const all_greetings = findAllSegmentations('Hello, world!',version, ecl)
+const all_greetings = allStrategies('Hello, world!',version, ecl)
 ```
+
+---
+
+## API
+
+### `createQR(data,options)`
+
+Creates a new `QRCode` instance with optimal data segmentation.
+
+#### data
+Type: `String`
+
+The data to be encoded in the URL. See [data types](#types).
+
+#### options
+Type: `Object`
+
+- `mask`: number 0-7 specifying which [mask](#masks) to use
+- `version`: number 1-40 specifying which [version](#versions) to use
+- `ecl`: number 0-3 specifying which [ecl](#ecls) to use
+- `minVersion`, `maxVersion`: specify a range of versions to try
+- `minEcl`, `maxEcl`: specify a range of ecls to try
+
+### `let qr = new QRCode({ mask, version, ecl, codewords })`
+
+`QRCode` assumes the data has already been encoded into `codewords`. This class handles drawing to a `Grid` based on mask, version, ecl, and codewords.
+
+- `mask`: number 0-7 specifying which [mask](#masks) to use
+- `version`: number 1-40 specifying which [version](#versions) to use
+- `ecl`: number 0-3 specifying which [ecl](#ecls) to use
+- `codewords`: Uint8Array with each item representing a byte
+
+#### Available Grids
+
+
+
+#### `new Grid(w,h)`
+
+#### `optimalStrategy(data,options)`
+
+#### `allStrategies(data,options)`
+
+#### `constructCodewords(data,steps,version,ecl)`
+
+---
+
+## Details
+
+### Types
+
+### Masks
+
+### Versions
+
+### ECLs
+
+---
+
+## Masks
 
 ## License
 

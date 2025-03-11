@@ -82,11 +82,9 @@ class Grid {
         if (!isUsed)
           continue;
         const isOn = byte & 1 << shift;
-        if (onlyOn === true && !isOn)
-          continue;
-        if (onlyOn === false && isOn)
-          continue;
-        yield [idx % w, Math.floor(idx / w)];
+        if (onlyOn == null || !onlyOn == !isOn) {
+          yield [idx % w, Math.floor(idx / w)];
+        }
       }
     }
   }
@@ -129,12 +127,12 @@ class QRCode {
     version = 2,
     ecl = 0,
     mask = 0,
-    bitstring = new Uint8Array
+    codewords = new Uint8Array
   } = {}) {
     this.version = version;
     this.ecl = ecl;
     this.mask = mask;
-    this.bitstring = bitstring;
+    this.codewords = codewords;
   }
   get size() {
     return this.version * 4 + 17;
@@ -240,7 +238,7 @@ class QRCode {
     return grid;
   }
   get data_grid() {
-    let { size, functional_grid, bitstring, mask } = this;
+    let { size, functional_grid, codewords, mask } = this;
     const grid = new Grid(size, size);
     let i = 0;
     for (let right = size - 1;right >= 1; right -= 2) {
@@ -255,10 +253,10 @@ class QRCode {
           const isFunctional = functional_grid.used(x, y);
           if (!isFunctional) {
             let dat = 0;
-            if (i < bitstring.length * 8) {
+            if (i < codewords.length * 8) {
               const byteIndex = Math.floor(i / 8);
               const bitIndex = 7 - i % 8;
-              dat = bitstring[byteIndex] >> bitIndex & 1;
+              dat = codewords[byteIndex] >> bitIndex & 1;
             }
             dat ^= MASK_SHAPES[mask](x, y);
             grid.set(x, y, dat);
@@ -273,21 +271,17 @@ class QRCode {
     let { functional_grid, data_grid } = this;
     return Grid.union(functional_grid, data_grid);
   }
-  static save(code) {
-    let { version, ecl, mask, bitstring } = code;
-    return new Uint8Array([
-      version & 255,
-      (ecl & 3) << 3 | (mask & 7) << 5,
-      ...bitstring
-    ]);
+  static create() {
   }
-  static load(data) {
-    return new QRCode({
-      version: data[0],
-      ecl: data[1] >> 3 & 3,
-      mask: data[1] >> 5 & 7,
-      bitstring: data.slice(2)
-    });
+  static save() {
+  }
+  static load() {
+  }
+  toString() {
+    return `(QRCode) version:${this.version}, ecl:${this.ecl}, mask:${this.mask}`;
+  }
+  [Bun.inspect.custom]() {
+    return `(QRCode) version:${this.version}, ecl:${this.ecl}, mask:${this.mask}`;
   }
 }
 export {
