@@ -175,56 +175,47 @@ var permutations = {
     forceCountry = false,
     validSpacers = [""],
     prefixCaps = false
-  } = {}) {
-  },
+  } = {}) {},
   email(address = "someone@example.com", {
     perfixCaps = false,
     domainCaps = false
-  } = {}) {
-  },
+  } = {}) {},
   emailMessage(address = "", {
     prefixCaps = false,
     domainCaps = false,
     queryCaps = false,
     queryOrdering = true
-  } = {}) {
-  },
+  } = {}) {},
   sms(number = "0123456789", {
     forceCountry = false,
     validSpacers = [""],
     prefixCaps = false,
     queryCaps = false
-  } = {}) {
-  },
+  } = {}) {},
   wifi({
     name = "",
-    pwd = ""
+    password = ""
   }) {
-    let parts = [`T:WPA`, `S:` + name, `P:` + pwd];
+    let parts = [`T:WPA`, `S:` + name, `P:` + password];
     let orders = [[0, 1, 2], [0, 2, 1], [1, 0, 2], [1, 2, 0], [2, 1, 0], [2, 0, 1]];
     return {
       total: orders.length,
       get: (k) => `WIFI:${orders[k].map((i) => parts[i]).join(";")};;`
     };
   },
-  vcard({ name = "", phone = "", email = "" }, {} = {}) {
-  },
-  event({ summary, dtstart }, {} = {}) {
-  },
-  geo({ latitude = "", longitude = "" } = {}, {} = {}) {
-  },
+  vcard({ name = "", phone = "", email = "" }, {} = {}) {},
+  event({ summary, dtstart }, {} = {}) {},
+  geo({ latitude = "", longitude = "" } = {}, {} = {}) {},
   bitcoin({ address, amount }, {
     prefixCaps = true,
     queryCaps = true,
     queryOrder = true
-  } = {}) {
-  },
+  } = {}) {},
   ethereum({ address, amount }, {
     prefixCaps = true,
     queryCaps = true,
     queryOrder = true
-  } = {}) {
-  }
+  } = {}) {}
 };
 
 // src/utils/ecls.js
@@ -252,12 +243,13 @@ var ECLS = [
 ];
 
 // src/utils/masks.js
+var { floor } = Math;
 var MASK_SHAPES = [
   (x, y) => (x + y) % 2 == 0,
   (x, y) => y % 2 == 0,
   (x, y) => x % 3 == 0,
   (x, y) => (x + y) % 3 == 0,
-  (x, y) => (Math.floor(x / 3) + Math.floor(y / 2)) % 2 == 0,
+  (x, y) => (floor(x / 3) + floor(y / 2)) % 2 == 0,
   (x, y) => x * y % 2 + x * y % 3 == 0,
   (x, y) => (x * y % 2 + x * y % 3) % 2 == 0,
   (x, y) => ((x + y) % 2 + x * y % 3) % 2 == 0
@@ -348,6 +340,13 @@ class Grid {
     }
     return result;
   }
+  static invert(grid) {
+    let result = new Grid(grid.w, grid.h);
+    for (const [x, y] of grid.tiles()) {
+      result.set(x, y, !grid.get(x, y));
+    }
+    return result;
+  }
 }
 
 // src/QRCode.js
@@ -367,151 +366,189 @@ class QRCode {
     return this.version * 4 + 17;
   }
   get functional_grid() {
-    let { finder_grid, timing_grid, alignment_grid, version_grid, format_grid } = this;
-    return Grid.union(finder_grid, timing_grid, alignment_grid, version_grid, format_grid);
+    const grid = new Grid(this.size, this.size);
+    drawFinder(grid, this);
+    drawTiming(grid, this);
+    drawAlignment(grid, this);
+    drawFormat(grid, this);
+    drawVersion(grid, this);
+    return grid;
   }
   get finder_grid() {
-    let { size } = this;
-    let grid = new Grid(size, size);
-    for (let r = 0;r < 8; r++) {
-      for (let c = 0;c < 8; c++) {
-        let is_on = Math.max(Math.abs(3 - r), Math.abs(3 - c)) != 2 && !(r == 7 || c == 7);
-        grid.set(r, c, is_on);
-        grid.set(size - r - 1, c, is_on);
-        grid.set(r, size - c - 1, is_on);
-      }
-    }
+    const grid = new Grid(this.size, this.size);
+    drawFinder(grid, this);
     return grid;
   }
   get timing_grid() {
-    let { size } = this;
-    let grid = new Grid(size, size);
-    for (let i = 8;i <= size - 8; i++) {
-      let is_on = i % 2 == 0;
-      grid.set(6, i, is_on);
-      grid.set(i, 6, is_on);
-    }
+    const grid = new Grid(this.size, this.size);
+    drawTiming(grid, this);
     return grid;
   }
-  get alignment_positions() {
-    let { version, size } = this;
-    if (version == 1) {
-      return [];
-    }
-    const numAlign = Math.floor(version / 7) + 2;
-    const step = version == 32 ? 26 : Math.ceil((version * 4 + 4) / (numAlign * 2 - 2)) * 2;
-    let result = [6];
-    for (let pos = size - 7;result.length < numAlign; pos -= step) {
-      result.splice(1, 0, pos);
-    }
-    return result;
-  }
   get alignment_grid() {
-    let { version, size, alignment_positions } = this;
-    let grid = new Grid(size, size);
-    const numAlign = alignment_positions.length;
-    for (let i = 0;i < numAlign; i++) {
-      for (let j = 0;j < numAlign; j++) {
-        if (!(i == 0 && j == 0 || i == 0 && j == numAlign - 1 || i == numAlign - 1 && j == 0)) {
-          for (let dy = -2;dy <= 2; dy++) {
-            for (let dx = -2;dx <= 2; dx++) {
-              let is_on = Math.max(Math.abs(dx), Math.abs(dy)) == 1 ? 0 : 1;
-              grid.set(alignment_positions[i] + dx, alignment_positions[j] + dy, is_on);
-            }
-          }
-        }
-      }
-    }
+    const grid = new Grid(this.size, this.size);
+    drawAlignment(grid, this);
     return grid;
   }
   get format_grid() {
-    let { ecl, mask, size } = this;
-    let grid = new Grid(size, size);
-    const data = ECLS[ecl].formatBits << 3 | mask;
-    let rem = data;
-    for (let i = 0;i < 10; i++) {
-      rem = rem << 1 ^ (rem >>> 9) * 1335;
-    }
-    const bits = (data << 10 | rem) ^ 21522;
-    for (let i = 0;i <= 5; i++)
-      grid.set(8, i, bits >> i);
-    grid.set(8, 7, bits >> 6);
-    grid.set(8, 8, bits >> 7);
-    grid.set(7, 8, bits >> 8);
-    for (let i = 9;i < 15; i++)
-      grid.set(14 - i, 8, bits >> i);
-    for (let i = 0;i < 8; i++)
-      grid.set(this.size - 1 - i, 8, bits >> i);
-    for (let i = 8;i < 15; i++)
-      grid.set(8, this.size - 15 + i, bits >> i);
-    grid.set(8, this.size - 8, 1);
+    const grid = new Grid(this.size, this.size);
+    drawFormat(grid, this);
     return grid;
   }
   get version_grid() {
-    let { version, size } = this;
-    const grid = new Grid(size, size);
-    if (version < 7) {
-      return grid;
-    }
-    let rem = version;
-    for (let i = 0;i < 12; i++) {
-      rem = rem << 1 ^ (rem >>> 11) * 7973;
-    }
-    const bits = version << 12 | rem;
-    for (let i = 0;i < 18; i++) {
-      const a = size - 11 + i % 3;
-      const b = Math.floor(i / 3);
-      grid.set(a, b, bits >> i);
-      grid.set(b, a, bits >> i);
-    }
+    const grid = new Grid(this.size, this.size);
+    drawVersion(grid, this);
     return grid;
   }
   get data_grid() {
-    let { size, functional_grid, codewords, mask } = this;
-    const grid = new Grid(size, size);
-    let i = 0;
-    for (let right = size - 1;right >= 1; right -= 2) {
-      if (right === 6) {
-        right = 5;
+    const grid = new Grid(this.size, this.size);
+    drawData(grid, this, this.functional_grid);
+    return grid;
+  }
+  get grid() {
+    const grid = new Grid(this.size, this.size);
+    drawFinder(grid, this);
+    drawTiming(grid, this);
+    drawAlignment(grid, this);
+    drawFormat(grid, this);
+    drawVersion(grid, this);
+    drawData(grid, this);
+    return grid;
+  }
+  toBytes() {
+    return new Uint8Array([
+      this.version & 255,
+      (this.ecl & 3) << 3 | (this.mask & 7) << 5,
+      ...this.codewords
+    ]);
+  }
+  toString() {
+    let bytes = this.toBytes();
+    let str = "";
+    bytes.forEach((b) => str += String.fromCharCode(b));
+    return btoa(str);
+  }
+  static fromBytes(bytes) {
+    return new QRCode({
+      version: bytes[0],
+      ecl: bytes[1] >> 3 & 3,
+      mask: bytes[1] >> 5 & 7,
+      codewords: bytes.slice(2)
+    });
+  }
+  static fromString(b64str) {
+    return QRCode.fromBytes(Uint8Array.from(atob(b64str), (c) => c.charCodeAt(0)));
+  }
+}
+function drawData(grid, { codewords, mask, size }, functional_grid) {
+  if (!functional_grid) {
+    functional_grid = grid;
+  }
+  let i = 0;
+  for (let right = size - 1;right >= 1; right -= 2) {
+    if (right === 6) {
+      right = 5;
+    }
+    for (let vert = 0;vert < size; vert++) {
+      for (let j = 0;j < 2; j++) {
+        const x = right - j;
+        const upward = (right + 1 & 2) === 0;
+        const y = upward ? size - 1 - vert : vert;
+        const isFunctional = functional_grid.used(x, y);
+        if (!isFunctional) {
+          let dat = 0;
+          if (i < codewords.length * 8) {
+            const byteIndex = Math.floor(i / 8);
+            const bitIndex = 7 - i % 8;
+            dat = codewords[byteIndex] >> bitIndex & 1;
+          }
+          dat ^= MASK_SHAPES[mask](x, y);
+          grid.set(x, y, dat);
+          i++;
+        }
       }
-      for (let vert = 0;vert < size; vert++) {
-        for (let j = 0;j < 2; j++) {
-          const x = right - j;
-          const upward = (right + 1 & 2) === 0;
-          const y = upward ? size - 1 - vert : vert;
-          const isFunctional = functional_grid.used(x, y);
-          if (!isFunctional) {
-            let dat = 0;
-            if (i < codewords.length * 8) {
-              const byteIndex = Math.floor(i / 8);
-              const bitIndex = 7 - i % 8;
-              dat = codewords[byteIndex] >> bitIndex & 1;
-            }
-            dat ^= MASK_SHAPES[mask](x, y);
-            grid.set(x, y, dat);
-            i++;
+    }
+  }
+}
+function drawFinder(grid, { size }) {
+  for (let r = 0;r < 8; r++) {
+    for (let c = 0;c < 8; c++) {
+      let is_on = Math.max(Math.abs(3 - r), Math.abs(3 - c)) != 2 && !(r == 7 || c == 7);
+      grid.set(r, c, is_on);
+      grid.set(size - r - 1, c, is_on);
+      grid.set(r, size - c - 1, is_on);
+    }
+  }
+}
+function drawTiming(grid, { size }) {
+  for (let i = 8;i <= size - 8; i++) {
+    let is_on = i % 2 == 0;
+    grid.set(6, i, is_on);
+    grid.set(i, 6, is_on);
+  }
+}
+function drawAlignment(grid, { size, version }) {
+  let alignment_positions = get_alignment_positions(version, size);
+  const numAlign = alignment_positions.length;
+  for (let i = 0;i < numAlign; i++) {
+    for (let j = 0;j < numAlign; j++) {
+      if (!(i == 0 && j == 0 || i == 0 && j == numAlign - 1 || i == numAlign - 1 && j == 0)) {
+        for (let dy = -2;dy <= 2; dy++) {
+          for (let dx = -2;dx <= 2; dx++) {
+            let is_on = Math.max(Math.abs(dx), Math.abs(dy)) == 1 ? 0 : 1;
+            grid.set(alignment_positions[i] + dx, alignment_positions[j] + dy, is_on);
           }
         }
       }
     }
-    return grid;
   }
-  get grid() {
-    let { functional_grid, data_grid } = this;
-    return Grid.union(functional_grid, data_grid);
+}
+function drawFormat(grid, { ecl, mask, size }) {
+  const data = ECLS[ecl].formatBits << 3 | mask;
+  let rem = data;
+  for (let i = 0;i < 10; i++) {
+    rem = rem << 1 ^ (rem >>> 9) * 1335;
   }
-  static create() {
+  const bits = (data << 10 | rem) ^ 21522;
+  for (let i = 0;i <= 5; i++)
+    grid.set(8, i, bits >> i);
+  grid.set(8, 7, bits >> 6);
+  grid.set(8, 8, bits >> 7);
+  grid.set(7, 8, bits >> 8);
+  for (let i = 9;i < 15; i++)
+    grid.set(14 - i, 8, bits >> i);
+  for (let i = 0;i < 8; i++)
+    grid.set(size - 1 - i, 8, bits >> i);
+  for (let i = 8;i < 15; i++)
+    grid.set(8, size - 15 + i, bits >> i);
+  grid.set(8, size - 8, 1);
+}
+function drawVersion(grid, { version, size }) {
+  if (version < 7) {
+    return;
   }
-  static save() {
+  let rem = version;
+  for (let i = 0;i < 12; i++) {
+    rem = rem << 1 ^ (rem >>> 11) * 7973;
   }
-  static load() {
+  const bits = version << 12 | rem;
+  for (let i = 0;i < 18; i++) {
+    const a = size - 11 + i % 3;
+    const b = Math.floor(i / 3);
+    grid.set(a, b, bits >> i);
+    grid.set(b, a, bits >> i);
   }
-  toString() {
-    return `(QRCode) version:${this.version}, ecl:${this.ecl}, mask:${this.mask}`;
+}
+function get_alignment_positions(version, size) {
+  if (version == 1) {
+    return [];
   }
-  [Bun.inspect.custom]() {
-    return `(QRCode) version:${this.version}, ecl:${this.ecl}, mask:${this.mask}`;
+  const numAlign = Math.floor(version / 7) + 2;
+  const step = version == 32 ? 26 : Math.ceil((version * 4 + 4) / (numAlign * 2 - 2)) * 2;
+  let result = [6];
+  for (let pos = size - 7;result.length < numAlign; pos -= step) {
+    result.splice(1, 0, pos);
   }
+  return result;
 }
 
 // src/utils/modes.js
@@ -822,9 +859,18 @@ function splitIntoSegments(str = "", steps = []) {
 // src/search/index.js
 function search(batch, priorityFn, {
   capacity = 20,
-  ecl = 0,
-  version = 2
+  ecl,
+  version
 } = {}) {
+  if (ecl == null || version == null) {
+    let opt = optimalStrategy(batch[0]);
+    if (ecl == null) {
+      ecl = opt.ecl;
+    }
+    if (version == null) {
+      version = opt.version;
+    }
+  }
   const queue = new MinQueue(capacity);
   let queue_items = [];
   for (let item of batch) {
@@ -834,16 +880,14 @@ function search(batch, priorityFn, {
       for (let m = 0;m < 8; m++) {
         let qr_params = { version, ecl, mask: m, codewords };
         let qr = new QRCode(qr_params);
-        let { score, obj } = priorityFn(qr);
-        queue.consider(score, { qr: QRCode.save(qr), obj, item });
+        let { score, ...obj } = priorityFn(qr);
+        queue.consider(score, { qr, item, computed: obj });
       }
     }
   }
   return queue.extractAll().map((x) => ({
-    score: x.score,
-    qr: x.object.qr,
-    computed: x.object.obj,
-    data: x.object.item
+    ...x.object,
+    score: x.score
   }));
 }
 function permute(type = "url", value = "https://qrs.art", options = {}) {
@@ -875,6 +919,7 @@ function batch(permutation = {}, {
 export {
   search,
   permute,
+  permutations,
   optimalStrategy,
   constructCodewords,
   batch,

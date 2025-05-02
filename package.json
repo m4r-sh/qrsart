@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "0.4.0",
   "name": "qrsart",
   "description": "Generate QR codes with aesthetic precision",
   "author": {
@@ -36,12 +36,12 @@
       "import": "./dist/search.js",
       "require": "./dist/search.js"
     },
-    "./lite": {
-      "bun": "./dist/lite.js",
-      "node": "./dist/lite.js",
-      "browser": "./dist/lite.min.js",
-      "import": "./dist/lite.js",
-      "require": "./dist/lite.js"
+    "./score": {
+      "bun": "./dist/score.js",
+      "node": "./dist/score.js",
+      "browser": "./dist/score.min.js",
+      "import": "./dist/score.js",
+      "require": "./dist/score.js"
     }
   }
 }

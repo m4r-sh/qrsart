@@ -1,6 +1,9 @@
 import { optimalStrategy, allStrategies, constructCodewords } from "./segments"
 import { QRCode } from "./QRCode"
 import { Grid } from "./Grid"
+import { ECLS } from './utils/ecls'
+import { MASK_SHAPES } from './utils/masks'
+
 
 function createQR(data="",{
   minVersion=1,
@@ -28,5 +31,7 @@ export {
   createQR,
   optimalStrategy,
   allStrategies,
-  constructCodewords
+  constructCodewords,
+  MASK_SHAPES,
+  ECLS
 }

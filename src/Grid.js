@@ -90,4 +90,12 @@ export class Grid {
     }
     return result;
   }
+
+  static invert(grid){
+    let result = new Grid(grid.w,grid.h)
+    for(const [x,y] of grid.tiles()){
+      result.set(x,y,!grid.get(x,y))
+    }
+    return result
+  }
 }

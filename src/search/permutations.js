@@ -96,9 +96,9 @@ export const permutations = {
   
   wifi({
     name='',
-    pwd=''
+    password=''
   }){
-    let parts = [`T:WPA`,`S:`+name,`P:`+pwd]
+    let parts = [`T:WPA`,`S:`+name,`P:`+password]
     let orders = [[0,1,2],[0,2,1],[1,0,2],[1,2,0],[2,1,0],[2,0,1]]
     return {
       total: orders.length,

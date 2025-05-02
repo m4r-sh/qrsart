@@ -85,7 +85,7 @@ test('permuteURL: protocol and path caps enabled', () => {
 
 // permuteWifi Tests
 test('permuteWifi: basic credentials', () => {
-  const comp = permuteWifi({ name: 'MyWifi', pwd: 'secret' });
+  const comp = permuteWifi({ name: 'MyWifi', password: 'secret' });
   expect(comp.total).toBe(6); // 3! = 6 orders
   expect(comp.get(0)).toBe('WIFI:T:WPA;S:MyWifi;P:secret;;');
   expect(comp.get(1)).toBe('WIFI:T:WPA;P:secret;S:MyWifi;;');
@@ -99,7 +99,7 @@ test('permuteWifi: basic credentials', () => {
 });
 
 test('permuteWifi: empty credentials', () => {
-  const comp = permuteWifi({ name: '', pwd: '' });
+  const comp = permuteWifi({ name: '', password: '' });
   expect(comp.total).toBe(6);
   expect(comp.get(0)).toBe('WIFI:T:WPA;S:;P:;;');
 });

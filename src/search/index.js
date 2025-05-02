@@ -3,13 +3,19 @@ import { permutations } from "./permutations"
 import { QRCode } from '../QRCode'
 import { allStrategies, optimalStrategy, constructCodewords } from '../segments'
 
-export { allStrategies, optimalStrategy, constructCodewords }
+export { allStrategies, optimalStrategy, constructCodewords, permutations }
 
 export function search(batch,priorityFn,{
   capacity= 20,
-  ecl=0,
-  version=2
+  ecl,
+  version
 }={}){
+
+  if(ecl == null || version == null){
+    let opt = optimalStrategy(batch[0])
+    if(ecl == null){ ecl = opt.ecl }
+    if(version == null){ version = opt.version }
+  }
 
   const queue = new MinQueue(capacity)
   let queue_items = []
@@ -22,17 +28,15 @@ export function search(batch,priorityFn,{
       for(let m = 0; m < 8; m++){
         let qr_params = { version, ecl, mask: m, codewords }
         let qr = new QRCode(qr_params)
-        let { score, obj } = priorityFn(qr);
-        queue.consider(score, { qr: QRCode.save(qr), obj, item })
+        let { score, ...obj } = priorityFn(qr);
+        queue.consider(score, { qr, item, computed: obj })
       }
     }
   }
 
   return queue.extractAll().map(x => ({
+    ...x.object,
     score: x.score,
-    qr: x.object.qr,
-    computed: x.object.obj,
-    data: x.object.item
   }))
 }
 
