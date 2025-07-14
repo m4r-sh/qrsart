@@ -3,7 +3,7 @@ export class Grid {
     this.w = w;
     this.h = h;
     const totalTiles = w * h;
-    const wordCount = Math.ceil(totalTiles / 32);
+    const wordCount = (totalTiles + 31) >> 5;
     this.valueBits = new Uint32Array(wordCount); // 1 bit per tile
     this.usedBits = new Uint32Array(wordCount);  // 1 bit per tile
   }
