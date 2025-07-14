@@ -3,54 +3,66 @@ class Grid {
   constructor(w, h) {
     this.w = w;
     this.h = h;
-    this.data = new Uint8Array(Math.ceil(w * h / 4));
+    const totalTiles = w * h;
+    const wordCount = Math.ceil(totalTiles / 32);
+    this.valueBits = new Uint32Array(wordCount);
+    this.usedBits = new Uint32Array(wordCount);
   }
-  #getPosition(x, y) {
+  #getBitPos(x, y) {
     const idx = y * this.w + x;
-    return [idx >> 2, (idx & 3) << 1];
+    return [idx >> 5, idx & 31];
   }
   set(x = 0, y = 0, v = 1) {
     if (x < 0 || x >= this.w || y < 0 || y >= this.h)
       return;
-    const [byteIdx, shift] = this.#getPosition(x, y);
-    const mask = 3 << shift;
-    const val = (v & 1) << shift | 1 << shift + 1;
-    this.data[byteIdx] = this.data[byteIdx] & ~mask | val;
+    const [i, s] = this.#getBitPos(x, y);
+    const bit = 1 << s;
+    if (v & 1)
+      this.valueBits[i] |= bit;
+    else
+      this.valueBits[i] &= ~bit;
+    this.usedBits[i] |= bit;
   }
   get(x = 0, y = 0) {
     if (x < 0 || x >= this.w || y < 0 || y >= this.h)
       return 0;
-    const [byteIdx, shift] = this.#getPosition(x, y);
-    return this.data[byteIdx] >> shift & 1;
+    const [i, s] = this.#getBitPos(x, y);
+    const bit = 1 << s;
+    return this.valueBits[i] & bit ? 1 : 0;
   }
   used(x = 0, y = 0) {
     if (x < 0 || x >= this.w || y < 0 || y >= this.h)
       return 0;
-    const [byteIdx, shift] = this.#getPosition(x, y);
-    return this.data[byteIdx] >> shift + 1 & 1;
+    const [i, s] = this.#getBitPos(x, y);
+    const bit = 1 << s;
+    return this.usedBits[i] & bit ? 1 : 0;
   }
   *tiles(onlyOn = null) {
-    const { w, h, data } = this;
-    let total_tiles = w * h;
-    for (let i = 0;i < data.length; i++) {
-      const byte = data[i];
-      if (byte === 0)
+    const { w, h, usedBits, valueBits } = this;
+    const totalTiles = w * h;
+    const wordCount = usedBits.length;
+    for (let i = 0;i < wordCount; i++) {
+      const used = usedBits[i];
+      if (used === 0)
         continue;
-      const idxBase = i << 2;
-      for (let j = 0;j < 4; j++) {
-        const idx = idxBase + j;
-        if (idx >= total_tiles)
+      const values = valueBits[i];
+      const baseIdx = i << 5;
+      for (let j = 0;j < 32; j++) {
+        const idx = baseIdx + j;
+        if (idx >= totalTiles)
           break;
-        const shift = j << 1;
-        const isUsed = byte & 2 << shift;
-        if (!isUsed)
+        const mask = 1 << j;
+        if (!(used & mask))
           continue;
-        const isOn = byte & 1 << shift;
+        const isOn = (values & mask) !== 0;
         if (onlyOn == null || !onlyOn == !isOn) {
           yield [idx % w, Math.floor(idx / w)];
         }
       }
     }
+  }
+  toValueArray() {
+    return this.valueBits.slice();
   }
   static union(...grids) {
     const max_w = Math.max(...grids.map((g) => g.w));
@@ -84,7 +96,7 @@ class Grid {
     return result;
   }
   static invert(grid) {
-    let result = new Grid(grid.w, grid.h);
+    const result = new Grid(grid.w, grid.h);
     for (const [x, y] of grid.tiles()) {
       result.set(x, y, !grid.get(x, y));
     }

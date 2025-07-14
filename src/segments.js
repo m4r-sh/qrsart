@@ -77,25 +77,22 @@ export function unpackStrategy(packed, originalLength){
 export function allStrategies(str, version, ecl) {
   const dataCapacityBits = getNumDataCodewords(version, ecl) * 8;
   const n = str.length;
-  let paths = [{ cost: 0, steps: [], mode: '' }];
+  let paths = [new Strategy()];
 
   for (let i = 0; i < n; i++) {
     const newPaths = [];
-    for (const path of paths) {
+    for (const strategy of paths) {
       for (const mode of ['numeric','alpha','byte']) {
         const charCost = modes[mode].charCost(str[i])
         if (charCost === Infinity) continue;
 
-        const headerBits = path.mode === mode ? 0 : 4 + modes[mode].numCharCountBits(version);
-        const newCost = path.cost + headerBits + charCost;
-        if (newCost > dataCapacityBits) continue;
+        const headerBits = strategy.lastMode === mode ? 0 : 4 + modes[mode].numCharCountBits(version);
+        let newCost = strategy.cost + headerBits + charCost;
+        if(strategy.lastMode != mode){ newCost = Math.ceil(newCost)}
+        if (newCost > dataCapacityBits - (n-1-i) * (10/3)) continue;
 
-        newPaths.push({
-          cost: newCost,
-          steps: [...path.steps, mode],
-          strategy: packStrategy(path.steps),
-          mode,
-        });
+        newPaths.push(strategy.addStep(mode,newCost))
+
       }
     }
     paths = newPaths;
@@ -105,42 +102,76 @@ export function allStrategies(str, version, ecl) {
   return paths
 }
 
-
-function findMinimalSegmentation(str, version) {
+export function *iterateAllStrategies(str, version, ecl) {
+  const dataCapacityBits = getNumDataCodewords(version, ecl) * 8;
   const n = str.length;
-  // dp[i][mode] stores the minimal cost and steps up to position i ending in mode
+
+  const stack = [{ index: 0, strategy: new Strategy() }];
+
+  while (stack.length) {
+    const { index, strategy } = stack.pop();
+
+    if (index === n) {
+      yield strategy;
+      continue;
+    }
+
+    for (const mode of ['byte','alpha','numeric']) {
+      const charCost = modes[mode].charCost(str[index]);
+      if (charCost === Infinity) continue;
+
+      const headerBits = strategy.lastMode === mode ? 0 : 4 + modes[mode].numCharCountBits(version);
+      let newCost = strategy.cost + headerBits + charCost;
+      if (strategy.lastMode !== mode) newCost = Math.ceil(newCost);
+
+      const estimatedRemainingCost = (n - 1 - index) * (10 / 3);
+      if (newCost > dataCapacityBits - estimatedRemainingCost) continue;
+
+      const newStrategy = strategy.addStep(mode, newCost);
+      stack.push({ index: index + 1, strategy: newStrategy });
+    }
+  }
+}
+
+
+export function findMinimalSegmentation(str, version) {
+  const n = str.length;
   const dp = Array(n + 1).fill().map(() => ({}));
-  dp[0] = { '': { cost: 0, steps: [] } };
-  let count = 0
+  dp[0][''] = new Strategy();
+
   for (let i = 1; i <= n; i++) {
     for (const prevMode in dp[i - 1]) {
       const prev = dp[i - 1][prevMode];
       for (const mode of ['numeric', 'alpha', 'byte']) {
         const charCost = modes[mode].charCost(str[i - 1]);
         if (charCost === Infinity) continue;
-        const headerBits = prevMode === mode ? 0 : 4 + modes[mode].numCharCountBits(version);
-        const newCost = prev.cost + headerBits + charCost;
-        if (!dp[i][mode] || newCost < dp[i][mode].cost) {
-          dp[i][mode] = { cost: newCost, steps: [...prev.steps, mode] };
+
+        const headerBits = prev.lastMode === mode ? 0 : 4 + modes[mode].numCharCountBits(version);
+        let newCost = prev.cost + headerBits + charCost;
+        if (prev.lastMode !== mode) newCost = Math.ceil(newCost);
+
+        const next = prev.addStep(mode, newCost);
+        const existing = dp[i][mode];
+
+        if (!existing || next.cost < existing.cost) {
+          dp[i][mode] = next;
         }
       }
     }
   }
 
-  // Find the minimal cost among all modes at the end
   const final = dp[n];
-  let minCost = Infinity;
-  let bestMode = '';
+  let best = null;
+
   for (const mode in final) {
-    if (final[mode].cost < minCost) {
-      minCost = final[mode].cost;
-      bestMode = mode;
+    if (!best || final[mode].cost < best.cost) {
+      best = final[mode];
     }
   }
 
-  return final[bestMode] ? {
-    steps: final[bestMode].steps,
-    cost: final[bestMode].cost
+  return best ? {
+    steps: best.getSteps(),
+    cost: best.cost
   } : null;
 }
 
@@ -199,7 +230,7 @@ export function getNumRawDataModules(ver) {
   return result;
 }
 
-function getNumDataCodewords(ver, ecl) {
+export function getNumDataCodewords(ver, ecl) {
   return Math.floor(getNumRawDataModules(ver) / 8) -
       ECLS[ecl].codewords_per_block[ver] * ECLS[ecl].num_ecc_blocks[ver]
 }
@@ -219,4 +250,35 @@ export function splitIntoSegments(str="",steps=[]){
     }
   }
   return segments;
+}
+
+const modeNames = ['byte', 'numeric', 'alpha', 'kanji'];
+const modeCodes = { byte: 0, numeric: 1, alpha: 2, kanji: 3 }
+
+export class Strategy {
+  constructor(packed = new Uint8Array(0), length = 0, cost = 0, lastMode = '') {
+    this.packed = packed;
+    this.length = length;
+    this.cost = cost;
+    this.lastMode = lastMode;
+  }
+
+  addStep(mode, newCost) {
+    let { length, packed } = this
+    const byteIdx = Math.floor(length / 4);
+    const shift = (3 - (length % 4)) * 2;
+    const new_arr_len = packed.length + (byteIdx < packed.length ? 0 : 1)
+    const new_packed = new Uint8Array(new_arr_len)
+    new_packed.set(packed);
+    new_packed[byteIdx] |= modeCodes[mode] << shift;
+    return new Strategy(new_packed, length + 1, newCost, mode);
+  }
+
+  getSteps() {
+    return Array.from({ length: this.length }, (_, i) => {
+      const b = this.packed[Math.floor(i / 4)];
+      const shift = (3 - (i % 4)) * 2;
+      return modeNames[(b >> shift) & 0b11];
+    });
+  }
 }

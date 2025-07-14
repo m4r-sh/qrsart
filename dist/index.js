@@ -198,24 +198,22 @@ function packStrategy(steps) {
 function allStrategies(str, version, ecl) {
   const dataCapacityBits = getNumDataCodewords(version, ecl) * 8;
   const n = str.length;
-  let paths = [{ cost: 0, steps: [], mode: "" }];
+  let paths = [new Strategy];
   for (let i = 0;i < n; i++) {
     const newPaths = [];
-    for (const path of paths) {
+    for (const strategy of paths) {
       for (const mode of ["numeric", "alpha", "byte"]) {
         const charCost = modes[mode].charCost(str[i]);
         if (charCost === Infinity)
           continue;
-        const headerBits = path.mode === mode ? 0 : 4 + modes[mode].numCharCountBits(version);
-        const newCost = path.cost + headerBits + charCost;
-        if (newCost > dataCapacityBits)
+        const headerBits = strategy.lastMode === mode ? 0 : 4 + modes[mode].numCharCountBits(version);
+        let newCost = strategy.cost + headerBits + charCost;
+        if (strategy.lastMode != mode) {
+          newCost = Math.ceil(newCost);
+        }
+        if (newCost > dataCapacityBits - (n - 1 - i) * (10 / 3))
           continue;
-        newPaths.push({
-          cost: newCost,
-          steps: [...path.steps, mode],
-          strategy: packStrategy(path.steps),
-          mode
-        });
+        newPaths.push(strategy.addStep(mode, newCost));
       }
     }
     paths = newPaths;
@@ -225,8 +223,7 @@ function allStrategies(str, version, ecl) {
 function findMinimalSegmentation(str, version) {
   const n = str.length;
   const dp = Array(n + 1).fill().map(() => ({}));
-  dp[0] = { "": { cost: 0, steps: [] } };
-  let count = 0;
+  dp[0][""] = new Strategy;
   for (let i = 1;i <= n; i++) {
     for (const prevMode in dp[i - 1]) {
       const prev = dp[i - 1][prevMode];
@@ -234,26 +231,28 @@ function findMinimalSegmentation(str, version) {
         const charCost = modes[mode].charCost(str[i - 1]);
         if (charCost === Infinity)
           continue;
-        const headerBits = prevMode === mode ? 0 : 4 + modes[mode].numCharCountBits(version);
-        const newCost = prev.cost + headerBits + charCost;
-        if (!dp[i][mode] || newCost < dp[i][mode].cost) {
-          dp[i][mode] = { cost: newCost, steps: [...prev.steps, mode] };
+        const headerBits = prev.lastMode === mode ? 0 : 4 + modes[mode].numCharCountBits(version);
+        let newCost = prev.cost + headerBits + charCost;
+        if (prev.lastMode !== mode)
+          newCost = Math.ceil(newCost);
+        const next = prev.addStep(mode, newCost);
+        const existing = dp[i][mode];
+        if (!existing || next.cost < existing.cost) {
+          dp[i][mode] = next;
         }
       }
     }
   }
   const final = dp[n];
-  let minCost = Infinity;
-  let bestMode = "";
+  let best = null;
   for (const mode in final) {
-    if (final[mode].cost < minCost) {
-      minCost = final[mode].cost;
-      bestMode = mode;
+    if (!best || final[mode].cost < best.cost) {
+      best = final[mode];
     }
   }
-  return final[bestMode] ? {
-    steps: final[bestMode].steps,
-    cost: final[bestMode].cost
+  return best ? {
+    steps: best.getSteps(),
+    cost: best.cost
   } : null;
 }
 function constructCodewords(str, steps, version, ecl) {
@@ -326,6 +325,34 @@ function splitIntoSegments(str = "", steps = []) {
   }
   return segments;
 }
+var modeNames = ["byte", "numeric", "alpha", "kanji"];
+var modeCodes = { byte: 0, numeric: 1, alpha: 2, kanji: 3 };
+
+class Strategy {
+  constructor(packed = new Uint8Array(0), length = 0, cost = 0, lastMode = "") {
+    this.packed = packed;
+    this.length = length;
+    this.cost = cost;
+    this.lastMode = lastMode;
+  }
+  addStep(mode, newCost) {
+    let { length, packed } = this;
+    const byteIdx = Math.floor(length / 4);
+    const shift = (3 - length % 4) * 2;
+    const new_arr_len = packed.length + (byteIdx < packed.length ? 0 : 1);
+    const new_packed = new Uint8Array(new_arr_len);
+    new_packed.set(packed);
+    new_packed[byteIdx] |= modeCodes[mode] << shift;
+    return new Strategy(new_packed, length + 1, newCost, mode);
+  }
+  getSteps() {
+    return Array.from({ length: this.length }, (_, i) => {
+      const b = this.packed[Math.floor(i / 4)];
+      const shift = (3 - i % 4) * 2;
+      return modeNames[b >> shift & 3];
+    });
+  }
+}
 
 // src/utils/masks.js
 var { floor } = Math;
@@ -345,54 +372,66 @@ class Grid {
   constructor(w, h) {
     this.w = w;
     this.h = h;
-    this.data = new Uint8Array(Math.ceil(w * h / 4));
+    const totalTiles = w * h;
+    const wordCount = Math.ceil(totalTiles / 32);
+    this.valueBits = new Uint32Array(wordCount);
+    this.usedBits = new Uint32Array(wordCount);
   }
-  #getPosition(x, y) {
+  #getBitPos(x, y) {
     const idx = y * this.w + x;
-    return [idx >> 2, (idx & 3) << 1];
+    return [idx >> 5, idx & 31];
   }
   set(x = 0, y = 0, v = 1) {
     if (x < 0 || x >= this.w || y < 0 || y >= this.h)
       return;
-    const [byteIdx, shift] = this.#getPosition(x, y);
-    const mask = 3 << shift;
-    const val = (v & 1) << shift | 1 << shift + 1;
-    this.data[byteIdx] = this.data[byteIdx] & ~mask | val;
+    const [i, s] = this.#getBitPos(x, y);
+    const bit = 1 << s;
+    if (v & 1)
+      this.valueBits[i] |= bit;
+    else
+      this.valueBits[i] &= ~bit;
+    this.usedBits[i] |= bit;
   }
   get(x = 0, y = 0) {
     if (x < 0 || x >= this.w || y < 0 || y >= this.h)
       return 0;
-    const [byteIdx, shift] = this.#getPosition(x, y);
-    return this.data[byteIdx] >> shift & 1;
+    const [i, s] = this.#getBitPos(x, y);
+    const bit = 1 << s;
+    return this.valueBits[i] & bit ? 1 : 0;
   }
   used(x = 0, y = 0) {
     if (x < 0 || x >= this.w || y < 0 || y >= this.h)
       return 0;
-    const [byteIdx, shift] = this.#getPosition(x, y);
-    return this.data[byteIdx] >> shift + 1 & 1;
+    const [i, s] = this.#getBitPos(x, y);
+    const bit = 1 << s;
+    return this.usedBits[i] & bit ? 1 : 0;
   }
   *tiles(onlyOn = null) {
-    const { w, h, data } = this;
-    let total_tiles = w * h;
-    for (let i = 0;i < data.length; i++) {
-      const byte = data[i];
-      if (byte === 0)
+    const { w, h, usedBits, valueBits } = this;
+    const totalTiles = w * h;
+    const wordCount = usedBits.length;
+    for (let i = 0;i < wordCount; i++) {
+      const used = usedBits[i];
+      if (used === 0)
         continue;
-      const idxBase = i << 2;
-      for (let j = 0;j < 4; j++) {
-        const idx = idxBase + j;
-        if (idx >= total_tiles)
+      const values = valueBits[i];
+      const baseIdx = i << 5;
+      for (let j = 0;j < 32; j++) {
+        const idx = baseIdx + j;
+        if (idx >= totalTiles)
           break;
-        const shift = j << 1;
-        const isUsed = byte & 2 << shift;
-        if (!isUsed)
+        const mask = 1 << j;
+        if (!(used & mask))
           continue;
-        const isOn = byte & 1 << shift;
+        const isOn = (values & mask) !== 0;
         if (onlyOn == null || !onlyOn == !isOn) {
           yield [idx % w, Math.floor(idx / w)];
         }
       }
     }
+  }
+  toValueArray() {
+    return this.valueBits.slice();
   }
   static union(...grids) {
     const max_w = Math.max(...grids.map((g) => g.w));
@@ -426,7 +465,7 @@ class Grid {
     return result;
   }
   static invert(grid) {
-    let result = new Grid(grid.w, grid.h);
+    const result = new Grid(grid.w, grid.h);
     for (const [x, y] of grid.tiles()) {
       result.set(x, y, !grid.get(x, y));
     }
@@ -455,7 +494,6 @@ class QRCode {
     drawFinder(grid, this);
     drawTiming(grid, this);
     drawAlignment(grid, this);
-    drawFormat(grid, this);
     drawVersion(grid, this);
     return grid;
   }
@@ -489,12 +527,16 @@ class QRCode {
     drawData(grid, this, this.functional_grid);
     return grid;
   }
+  get rawdata_grid() {
+    const grid = new Grid(this.size, this.size);
+    drawData(grid, this, this.functional_grid, true);
+    return grid;
+  }
   get grid() {
     const grid = new Grid(this.size, this.size);
     drawFinder(grid, this);
     drawTiming(grid, this);
     drawAlignment(grid, this);
-    drawFormat(grid, this);
     drawVersion(grid, this);
     drawData(grid, this);
     return grid;
@@ -524,10 +566,12 @@ class QRCode {
     return QRCode.fromBytes(Uint8Array.from(atob(b64str), (c) => c.charCodeAt(0)));
   }
 }
-function drawData(grid, { codewords, mask, size }, functional_grid) {
+function drawData(grid, qr_this, functional_grid, skip_mask = false) {
   if (!functional_grid) {
     functional_grid = grid;
   }
+  let { codewords, mask, size } = qr_this;
+  drawFormat(grid, qr_this);
   let i = 0;
   for (let right = size - 1;right >= 1; right -= 2) {
     if (right === 6) {
@@ -546,7 +590,8 @@ function drawData(grid, { codewords, mask, size }, functional_grid) {
             const bitIndex = 7 - i % 8;
             dat = codewords[byteIndex] >> bitIndex & 1;
           }
-          dat ^= MASK_SHAPES[mask](x, y);
+          if (skip_mask !== true)
+            dat ^= MASK_SHAPES[mask](x, y);
           grid.set(x, y, dat);
           i++;
         }

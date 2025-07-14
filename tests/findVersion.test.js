@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { optimalStrategy, getNumRawDataModules } from "../src/segments"; // Adjust import path as needed
+import { optimalStrategy, getNumRawDataModules, allStrategies, getNumDataCodewords } from "../src/segments"; // Adjust import path as needed
 
 // Test 1: Simple case with a short string
 test('optimalStrategy selects version 1 and high ECL for short string', () => {

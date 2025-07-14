@@ -24,7 +24,7 @@ export class QRCode {
     drawFinder(grid,this)
     drawTiming(grid,this)
     drawAlignment(grid,this)
-    drawFormat(grid,this)
+    // drawFormat(grid,this)
     drawVersion(grid,this)
     return grid
   }
@@ -65,12 +65,18 @@ export class QRCode {
     return grid
   }
 
+  get rawdata_grid(){
+    const grid = new Grid(this.size,this.size)
+    drawData(grid,this,this.functional_grid,true)
+    return grid
+  }
+
   get grid(){
     const grid = new Grid(this.size,this.size)
     drawFinder(grid,this)
     drawTiming(grid,this)
     drawAlignment(grid,this)
-    drawFormat(grid,this)
+    // drawFormat(grid,this)
     drawVersion(grid,this)
     drawData(grid,this)
     return grid
@@ -105,8 +111,11 @@ export class QRCode {
   }
 }
 
-function drawData(grid,{codewords,mask,size},functional_grid){
+// TODO: optional mask for raw encoding to be xor permuted in gpu
+function drawData(grid,qr_this,functional_grid,skip_mask=false){
   if(!functional_grid){ functional_grid = grid }
+  let {codewords,mask,size} = qr_this
+  drawFormat(grid,qr_this)
   let i = 0;
   for (let right = size - 1; right >= 1; right -= 2) {
     if (right === 6) {
@@ -126,7 +135,8 @@ function drawData(grid,{codewords,mask,size},functional_grid){
             const bitIndex = 7 - (i % 8);
             dat = (codewords[byteIndex] >> bitIndex) & 1;
           }
-          dat ^= MASK_SHAPES[mask](x, y);
+          if(skip_mask !== true) dat ^= MASK_SHAPES[mask](x, y);
+
           grid.set(x, y, dat);
           i++;
         }

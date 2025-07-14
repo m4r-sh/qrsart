@@ -93,7 +93,6 @@ export const permutations = {
 
   },
   // TODO
-  
   wifi({
     name='',
     password=''

@@ -8,7 +8,8 @@ export { allStrategies, optimalStrategy, constructCodewords, permutations }
 export function search(batch,priorityFn,{
   capacity= 20,
   ecl,
-  version
+  version,
+  tryModes=true
 }={}){
 
   if(ecl == null || version == null){
@@ -23,13 +24,16 @@ export function search(batch,priorityFn,{
   
   for(let item of batch){
     let all_segs = allStrategies(item,version,ecl)
-    let encodings = all_segs.map(s => constructCodewords(item,s.steps,version,ecl))
+    let encodings = all_segs.map(s => constructCodewords(item,s.getSteps(),version,ecl))
     for(let codewords of encodings){
       for(let m = 0; m < 8; m++){
         let qr_params = { version, ecl, mask: m, codewords }
         let qr = new QRCode(qr_params)
         let { score, ...obj } = priorityFn(qr);
         queue.consider(score, { qr, item, computed: obj })
+        if(!tryModes){
+          break;
+        }
       }
     }
   }
@@ -44,20 +48,9 @@ export function permute(type='url',value='https://qrs.art',options={}){
   return permutations[type](value,options)
 }
 
-export function batch(permutation = {},{
-  start = 0,
-  stride = 1,
-  limit=null,
-  loop=null
-}={}){
-  let { total, get } = permutation
-  if(limit == null){ limit = total }
-  if(loop == null){ loop = total }
-  let results = []
-  for(let i = 0; i < limit; i++){
-    let index = (start + i * stride) % loop
-    if(index >= total){ continue } // skip inflated values for even looping
-    results.push(get(index))
+export function *batch(permSet, start=0, stride=1){
+  let { total, get } = permSet
+  for(let i = start; i < total; i+=stride){
+    yield get(i)
   }
-  return results;
 }
