@@ -74,35 +74,8 @@ export function unpackStrategy(packed, originalLength){
   return arr.map(i => ['byte','numeric','alpha','kanji'][i]);
 }
 
-export function allStrategies(str, version, ecl) {
-  const dataCapacityBits = getNumDataCodewords(version, ecl) * 8;
-  const n = str.length;
-  let paths = [new Strategy()];
 
-  for (let i = 0; i < n; i++) {
-    const newPaths = [];
-    for (const strategy of paths) {
-      for (const mode of ['numeric','alpha','byte']) {
-        const charCost = modes[mode].charCost(str[i])
-        if (charCost === Infinity) continue;
-
-        const headerBits = strategy.lastMode === mode ? 0 : 4 + modes[mode].numCharCountBits(version);
-        let newCost = strategy.cost + headerBits + charCost;
-        if(strategy.lastMode != mode){ newCost = Math.ceil(newCost)}
-        if (newCost > dataCapacityBits - (n-1-i) * (10/3)) continue;
-
-        newPaths.push(strategy.addStep(mode,newCost))
-
-      }
-    }
-    paths = newPaths;
-  }
-
-
-  return paths
-}
-
-export function *iterateAllStrategies(str, version, ecl) {
+export function *allStrategies(str, version, ecl) {
   const dataCapacityBits = getNumDataCodewords(version, ecl) * 8;
   const n = str.length;
 

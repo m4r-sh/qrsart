@@ -195,30 +195,31 @@ function packStrategy(steps) {
   }
   return packed;
 }
-function allStrategies(str, version, ecl) {
+function* allStrategies(str, version, ecl) {
   const dataCapacityBits = getNumDataCodewords(version, ecl) * 8;
   const n = str.length;
-  let paths = [new Strategy];
-  for (let i = 0;i < n; i++) {
-    const newPaths = [];
-    for (const strategy of paths) {
-      for (const mode of ["numeric", "alpha", "byte"]) {
-        const charCost = modes[mode].charCost(str[i]);
-        if (charCost === Infinity)
-          continue;
-        const headerBits = strategy.lastMode === mode ? 0 : 4 + modes[mode].numCharCountBits(version);
-        let newCost = strategy.cost + headerBits + charCost;
-        if (strategy.lastMode != mode) {
-          newCost = Math.ceil(newCost);
-        }
-        if (newCost > dataCapacityBits - (n - 1 - i) * (10 / 3))
-          continue;
-        newPaths.push(strategy.addStep(mode, newCost));
-      }
+  const stack = [{ index: 0, strategy: new Strategy }];
+  while (stack.length) {
+    const { index, strategy } = stack.pop();
+    if (index === n) {
+      yield strategy;
+      continue;
     }
-    paths = newPaths;
+    for (const mode of ["byte", "alpha", "numeric"]) {
+      const charCost = modes[mode].charCost(str[index]);
+      if (charCost === Infinity)
+        continue;
+      const headerBits = strategy.lastMode === mode ? 0 : 4 + modes[mode].numCharCountBits(version);
+      let newCost = strategy.cost + headerBits + charCost;
+      if (strategy.lastMode !== mode)
+        newCost = Math.ceil(newCost);
+      const estimatedRemainingCost = (n - 1 - index) * (10 / 3);
+      if (newCost > dataCapacityBits - estimatedRemainingCost)
+        continue;
+      const newStrategy = strategy.addStep(mode, newCost);
+      stack.push({ index: index + 1, strategy: newStrategy });
+    }
   }
-  return paths;
 }
 function findMinimalSegmentation(str, version) {
   const n = str.length;
