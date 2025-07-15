@@ -40,38 +40,9 @@ export function optimalStrategy(str,{
   return {
     version,
     ecl,
-    codewords: constructCodewords(str, minimalSeg.steps, version, ecl),
-    cost: minimalSeg.cost,
-    steps: minimalSeg.steps,
-    strategy: packStrategy(minimalSeg.steps),
-    budget: getNumDataCodewords(version, ecl) * 8
+    codewords: constructCodewords(str, minimalSeg, version, ecl),
+    strategy: minimalSeg,
   };
-}
-
-export function packStrategy(steps){
-  let arr = steps.map(mode => ['byte','numeric','alpha','kanji'].indexOf(mode))
-  const packedLength = Math.ceil(arr.length / 4);
-  const packed = new Uint8Array(packedLength);
-  for (let i = 0; i < arr.length; i++) {
-    const byteIndex = Math.floor(i / 4);
-    const shift = (3 - (i % 4)) * 2;  // Positions: 6, 4, 2, 0 bits
-    // Mask the value to 2 bits and shift it into position
-    packed[byteIndex] |= (arr[i] & 0x03) << shift;
-  }
-  return packed;
-}
-
-export function unpackStrategy(packed, originalLength){
-  const arr = [];
-  for (let i = 0; i < packed.length; i++) {
-    const byte = packed[i];
-    for (let shift = 6; shift >= 0; shift -= 2) {
-      if (arr.length < originalLength) {
-        arr.push((byte >> shift) & 0x03);
-      }
-    }
-  }
-  return arr.map(i => ['byte','numeric','alpha','kanji'][i]);
 }
 
 
@@ -142,15 +113,12 @@ export function findMinimalSegmentation(str, version) {
     }
   }
 
-  return best ? {
-    steps: best.getSteps(),
-    cost: best.cost
-  } : null;
+  return best;
 }
 
-export function constructCodewords(str, steps, version, ecl) {
+export function constructCodewords(str, strategy, version, ecl) {
 
-  let segs = splitIntoSegments(str,steps)
+  let segs = splitIntoSegments(str,strategy)
   let bb = [];
   for (const { mode, str } of segs) {
       appendBits(modes[mode].modeBits, 4, bb);
@@ -208,8 +176,9 @@ export function getNumDataCodewords(ver, ecl) {
       ECLS[ecl].codewords_per_block[ver] * ECLS[ecl].num_ecc_blocks[ver]
 }
 
-export function splitIntoSegments(str="",steps=[]){
+export function splitIntoSegments(str="",strategy={}){
   let segments = []
+  let steps = strategy.steps
   let curMode = steps[0]
   let start = 0
   for(let i = 1; i <= str.length; i++){
@@ -234,6 +203,7 @@ export class Strategy {
     this.length = length;
     this.cost = cost;
     this.lastMode = lastMode;
+    this._steps = null
   }
 
   addStep(mode, newCost) {
@@ -247,11 +217,12 @@ export class Strategy {
     return new Strategy(new_packed, length + 1, newCost, mode);
   }
 
-  getSteps() {
+  get steps(){
+    if(this._steps){ return this._steps }
     return Array.from({ length: this.length }, (_, i) => {
       const b = this.packed[Math.floor(i / 4)];
       const shift = (3 - (i % 4)) * 2;
       return modeNames[(b >> shift) & 0b11];
-    });
+    })
   }
 }

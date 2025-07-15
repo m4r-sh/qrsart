@@ -12,6 +12,6 @@ export function permuteData(type='url',value='https://qrs.art',options={}){
 export function *iterateBatch(permSet, start=0, stride=1){
   let { total, get } = permSet
   for(let i = start; i < total; i+=stride){
-    yield get(i)
+    yield [get(i),i]
   }
 }

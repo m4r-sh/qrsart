@@ -80,11 +80,14 @@ export class MinQueue {
   consider(score, object) {
     if (this.length < this._capacity) {
       this.push(object, score);
+      return true
     } else if (score > this._priorities[ROOT_INDEX]) {
       this._objects[ROOT_INDEX] = object;
       this._priorities[ROOT_INDEX] = score;
       this.#bubbleDown(ROOT_INDEX);
+      return true
     }
+    return false
   }
 
   extractAll() {

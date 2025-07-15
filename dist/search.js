@@ -91,11 +91,14 @@ class MinQueue {
   consider(score, object) {
     if (this.length < this._capacity) {
       this.push(object, score);
+      return true;
     } else if (score > this._priorities[ROOT_INDEX]) {
       this._objects[ROOT_INDEX] = object;
       this._priorities[ROOT_INDEX] = score;
       this.#bubbleDown(ROOT_INDEX);
+      return true;
     }
+    return false;
   }
   extractAll() {
     const results = [];
@@ -229,7 +232,7 @@ function permuteData(type = "url", value = "https://qrs.art", options = {}) {
 function* iterateBatch(permSet, start = 0, stride = 1) {
   let { total, get } = permSet;
   for (let i = start;i < total; i += stride) {
-    yield get(i);
+    yield [get(i), i];
   }
 }
 export {

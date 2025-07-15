@@ -1,4 +1,4 @@
-import { optimalStrategy, allStrategies, constructCodewords } from "./segments"
+import { optimalStrategy, allStrategies, constructCodewords  } from "./segments"
 import { QRCode } from "./QRCode"
 import { Grid } from "./Grid"
 import { ECLS } from './utils/ecls'
