@@ -462,6 +462,38 @@ class Grid {
   }
 }
 
+// src/utils/base58.js
+var ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+var BASE = BigInt(58);
+function base58Encode(bytes2) {
+  let encoded = "";
+  let num = BigInt(0);
+  for (let byte of bytes2) {
+    num = num * BigInt(256) + BigInt(byte);
+  }
+  while (num > 0) {
+    encoded = ALPHABET[Number(num % BASE)] + encoded;
+    num = num / BASE;
+  }
+  return encoded;
+}
+function base58Decode(encoded) {
+  const charMap = new Map(ALPHABET.split("").map((c, i) => [c, BigInt(i)]));
+  let num = BigInt(0);
+  for (let char of encoded) {
+    const value = charMap.get(char);
+    if (value === undefined)
+      throw new Error("Invalid Base58 character");
+    num = num * BASE + value;
+  }
+  const bytes2 = [];
+  while (num > 0) {
+    bytes2.unshift(Number(num % BigInt(256)));
+    num = num / BigInt(256);
+  }
+  return new Uint8Array(bytes2);
+}
+
 // src/QRCode.js
 class QRCode {
   constructor({
@@ -538,21 +570,18 @@ class QRCode {
     ]);
   }
   toString() {
-    let bytes = this.toBytes();
-    let str = "";
-    bytes.forEach((b) => str += String.fromCharCode(b));
-    return btoa(str);
+    return base58Encode(bytes);
   }
-  static fromBytes(bytes) {
+  static fromBytes(bytes2) {
     return new QRCode({
-      version: bytes[0],
-      ecl: bytes[1] >> 3 & 3,
-      mask: bytes[1] >> 5 & 7,
-      codewords: bytes.slice(2)
+      version: bytes2[0],
+      ecl: bytes2[1] >> 3 & 3,
+      mask: bytes2[1] >> 5 & 7,
+      codewords: bytes2.slice(2)
     });
   }
-  static fromString(b64str) {
-    return QRCode.fromBytes(Uint8Array.from(atob(b64str), (c) => c.charCodeAt(0)));
+  static fromString(b58str) {
+    return QRCode.fromBytes(base58Decode(b58str));
   }
 }
 function drawData(grid, qr_this, functional_grid, skip_mask = false) {

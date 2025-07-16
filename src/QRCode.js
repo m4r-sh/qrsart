@@ -1,6 +1,7 @@
 import { ECLS } from './utils/ecls.js'
 import { MASK_SHAPES } from './utils/masks.js'
 import { Grid } from './Grid'
+import { base58Decode, base58Encode } from './utils/base58.js'
 
 export class QRCode {
   constructor({
@@ -91,10 +92,7 @@ export class QRCode {
   }
 
   toString(){
-    let bytes = this.toBytes()
-    let str = '';
-    bytes.forEach(b => str += String.fromCharCode(b));
-    return btoa(str);
+    return base58Encode(this.toBytes());
   }
 
   static fromBytes(bytes){
@@ -106,8 +104,8 @@ export class QRCode {
     })
   }
 
-  static fromString(b64str){
-    return QRCode.fromBytes(Uint8Array.from(atob(b64str), c => c.charCodeAt(0)))
+  static fromString(b58str){
+    return QRCode.fromBytes(base58Decode(b58str))
   }
 }
 

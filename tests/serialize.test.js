@@ -9,7 +9,6 @@ describe('QRCode Serialization', () => {
 
 
     
-    const bytes = qr.toBytes();
     expect(qr.version).toBe(qr2.version); 
     expect(qr.size).toBe(qr2.size); 
     expect(qr.ecl).toBe(qr2.ecl); 
@@ -33,25 +32,6 @@ describe('QRCode Serialization', () => {
     expect(bytes[3]).toBe(66);
     expect(bytes[4]).toBe(67);
     expect(bytes.length).toBe(5);
-  });
-
-  test('toString() produces valid base64 string', () => {
-    const qr = new QRCode({
-      version: 2,
-      ecl: 0,
-      mask: 0,
-      codewords: new Uint8Array([72, 101, 108, 108, 111]) // 'Hello'
-    });
-    
-    const str = qr.toString();
-    expect(typeof str).toBe('string');
-    // Check if it's valid base64 by decoding it
-    const decoded = atob(str);
-    expect(decoded.charCodeAt(0)).toBe(2); // version
-    expect(decoded.charCodeAt(1)).toBe(0); // ecl and mask
-    expect(decoded.charCodeAt(2)).toBe(72); // 'H'
-    expect(decoded.charCodeAt(3)).toBe(101); // 'e'
-    expect(decoded.charCodeAt(4)).toBe(108); // 'l'
   });
 
   test('fromBytes() reconstructs QRCode correctly', () => {
