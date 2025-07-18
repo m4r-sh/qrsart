@@ -45,7 +45,6 @@ export function optimalStrategy(str,{
   };
 }
 
-
 export function *allStrategies(str, version, ecl) {
   const dataCapacityBits = getNumDataCodewords(version, ecl) * 8;
   const n = str.length;
@@ -60,19 +59,35 @@ export function *allStrategies(str, version, ecl) {
       continue;
     }
 
-    for (const mode of ['byte','alpha','numeric']) {
-      const charCost = modes[mode].charCost(str[index]);
-      if (charCost === Infinity) continue;
+    const c = str[index];
+    const estimatedRemainingCost = (n - index - 1) * (10 / 3);
 
-      const headerBits = strategy.mode === mode ? 0 : 4 + modes[mode].numCharCountBits(version);
-      let newCost = strategy.cost + headerBits + charCost;
-      if (strategy.mode !== mode) newCost = Math.ceil(newCost);
+    // Try to extend current mode if possible (no header)
+    if (strategy.mode !== 'none') {
+      const modedef = modes[strategy.mode];
+      const addedBits = modedef.getMarginal(strategy.phase, c);
+      if (addedBits !== Infinity) {
+        const newPhase = (strategy.phase + 1) % modedef.groupSize;
+        const newCost = strategy.cost + addedBits;
+        if (newCost <= dataCapacityBits - estimatedRemainingCost) {
+          const newStrategy = strategy.addStep(strategy.mode, newPhase, newCost);
+          stack.push({ index: index + 1, strategy: newStrategy });
+        }
+      }
+    }
 
-      const estimatedRemainingCost = (n - 1 - index) * (10 / 3);
-      if (newCost > dataCapacityBits - estimatedRemainingCost) continue;
-
-      const newStrategy = strategy.addStep(mode, newCost);
-      stack.push({ index: index + 1, strategy: newStrategy });
+    // Try to start a new segment for each mode (including current, with header)
+    for (const mode of ['byte', 'alpha', 'numeric']) {
+      const modedef = modes[mode];
+      const initialBits = modedef.getMarginal(0, c);
+      if (initialBits === Infinity) continue;
+      const headerBits = 4 + modedef.numCharCountBits(version);
+      const newCost = strategy.cost + headerBits + initialBits;
+      const newPhase = 1 % modedef.groupSize;
+      if (newCost <= dataCapacityBits - estimatedRemainingCost) {
+        const newStrategy = strategy.addStep(mode, newPhase, newCost);
+        stack.push({ index: index + 1, strategy: newStrategy });
+      }
     }
   }
 }
