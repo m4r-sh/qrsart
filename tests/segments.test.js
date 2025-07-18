@@ -46,8 +46,8 @@ test('segmentation breakpoints', () => {
 })
 
 test('complex segmentation', () => {
-  expect(findMinimalSegmentation(`Golden ratio φ = 1.6180339887498948482045868343656381177203091798057628621354486227052604628189024497072072041893911374......`).steps).toEqual([
-    ...Array(20).fill('byte'),
+  expect(findMinimalSegmentation(`Golden ratio φ = 1.6180339887498948482045868343656381177203091798057628621354486227052604628189024497072072041893911374......`, 1).steps).toEqual([
+    ...Array(19).fill('byte'),
     ...Array(100).fill('numeric'),
     ...Array(6).fill('alpha')
   ])

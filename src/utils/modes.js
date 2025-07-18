@@ -3,11 +3,16 @@ const ALPHANUMERIC_REGEX = /^[A-Z0-9 $%*+.\/:-]*$/;
 const ALPHANUMERIC_CHARSET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:";
 const encoder = new TextEncoder()
 
+const NUMERIC_MARGINS = [4,3,3]
+const ALPHA_MARGINS = [6,5]
+
 export let modes = {
   numeric: {
     modeBits: 1,
     charCost: (c) => NUMERIC_REGEX.test(c) ? (10/3) : Infinity,
     numCharCountBits: (v) => [10,12,14][Math.floor((v + 7)/17)],
+    groupSize: 3,
+    getMarginal: (c,phase=0) => NUMERIC_REGEX.test(c) ? NUMERIC_MARGINS[phase % 3] : Infinity,
     write(data){
       let bb = [];
       for (let i = 0; i < data.length;) { // Consume up to 3 digits per iteration
@@ -22,6 +27,8 @@ export let modes = {
     modeBits: 2,
     charCost: (c) => ALPHANUMERIC_REGEX.test(c) ? 5.5 : Infinity,
     numCharCountBits: (v) => [9,11,13][Math.floor((v + 7)/17)],
+    groupSize: 2,
+    getMarginal: (c,phase=0) => ALPHANUMERIC_REGEX.test(c) ? ALPHA_MARGINS[phase % 2] : Infinity,
     write(data){
       let bb = [];
       let i;
@@ -39,8 +46,9 @@ export let modes = {
   byte: {
     modeBits: 4,
     charCost: (c) => countUtf8Bytes(c) * 8,
+    groupSize: 1,
     numCharCountBits: (v) => [8,16,16][Math.floor((v + 7)/17)],
-    test: x => true,
+    getMarginal: (c,phase=0) => countUtf8Bytes(c) * 8,
     write(str){
       let data = encoder.encode(str)
       let bb = [];

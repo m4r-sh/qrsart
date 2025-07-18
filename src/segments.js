@@ -64,9 +64,9 @@ export function *allStrategies(str, version, ecl) {
       const charCost = modes[mode].charCost(str[index]);
       if (charCost === Infinity) continue;
 
-      const headerBits = strategy.lastMode === mode ? 0 : 4 + modes[mode].numCharCountBits(version);
+      const headerBits = strategy.mode === mode ? 0 : 4 + modes[mode].numCharCountBits(version);
       let newCost = strategy.cost + headerBits + charCost;
-      if (strategy.lastMode !== mode) newCost = Math.ceil(newCost);
+      if (strategy.mode !== mode) newCost = Math.ceil(newCost);
 
       const estimatedRemainingCost = (n - 1 - index) * (10 / 3);
       if (newCost > dataCapacityBits - estimatedRemainingCost) continue;
@@ -77,39 +77,89 @@ export function *allStrategies(str, version, ecl) {
   }
 }
 
+const modeNames = ['byte','numeric','alpha']
 
-export function findMinimalSegmentation(str, version) {
+const MAX_GROUP_SIZE = 3;
+const NUM_MODES = 5; // Includes 'none' and reserve for 'kanji'
+const NUM_STATES = NUM_MODES * MAX_GROUP_SIZE; // 15
+
+const modeToIdx = {
+  'none': 0,
+  'byte': 1,
+  'numeric': 2,
+  'alpha': 3,
+  'kanji': 4, // Reserved, not used yet
+};
+
+const idxToMode = [];
+idxToMode[modeToIdx['none']] = 'none';
+idxToMode[modeToIdx['byte']] = 'byte';
+idxToMode[modeToIdx['numeric']] = 'numeric';
+idxToMode[modeToIdx['alpha']] = 'alpha';
+idxToMode[modeToIdx['kanji']] = 'kanji';
+
+const groupSizes = [1, 1, 3, 2, 1]; // none:1, byte:1, numeric:3, alpha:2, kanji:1
+
+export function findMinimalSegmentation(str, version=1) {
   const n = str.length;
-  const dp = Array(n + 1).fill().map(() => ({}));
-  dp[0][''] = new Strategy();
+
+  let prevStates = new Array(NUM_STATES).fill(null);
+  const noneState = modeToIdx['none'] * MAX_GROUP_SIZE + 0;
+  prevStates[noneState] = new Strategy();
 
   for (let i = 1; i <= n; i++) {
-    for (const prevMode in dp[i - 1]) {
-      const prev = dp[i - 1][prevMode];
-      for (const mode of ['numeric', 'alpha', 'byte']) {
-        const charCost = modes[mode].charCost(str[i - 1]);
-        if (charCost === Infinity) continue;
+    const c = str[i - 1];
+    let currStates = new Array(NUM_STATES).fill(null);
 
-        const headerBits = prev.lastMode === mode ? 0 : 4 + modes[mode].numCharCountBits(version);
-        let newCost = prev.cost + headerBits + charCost;
-        if (prev.lastMode !== mode) newCost = Math.ceil(newCost);
+    for (let s = 0; s < NUM_STATES; s++) {
+      if (prevStates[s] === null) continue;
 
+      const prev = prevStates[s];
+      const prevModeIdx = Math.floor(s / MAX_GROUP_SIZE);
+      const prevPhase = s % MAX_GROUP_SIZE;
+      const prevMode = idxToMode[prevModeIdx];
+
+      // Extend if possible
+      if (prevMode !== 'none') {
+        const curmode = modes[prevMode];
+        const addedBits = curmode.getMarginal(c, prevPhase);
+        if (addedBits !== Infinity) {
+          const newPhase = (prevPhase + 1) % curmode.groupSize;
+          const newState = modeToIdx[prevMode] * MAX_GROUP_SIZE + newPhase;
+          const newCost = prev.cost + addedBits;
+          const next = prev.addStep(prevMode, newCost);
+          if (currStates[newState] === null || next.cost < currStates[newState].cost) {
+            currStates[newState] = next;
+          }
+        }
+      }
+
+      // Switch to a new mode (start new segment)
+      for (const mode of modeNames) {
+        const curmode = modes[mode];
+        const initialBits = curmode.getMarginal(c, 0);
+        if (initialBits === Infinity) continue;
+        const headerBits = 4 + curmode.numCharCountBits(version);
+        const newCost = prev.cost + headerBits + initialBits;
+        const newPhase = 1 % curmode.groupSize;
+        const newState = modeToIdx[mode] * MAX_GROUP_SIZE + newPhase;
         const next = prev.addStep(mode, newCost);
-        const existing = dp[i][mode];
-
-        if (!existing || next.cost < existing.cost) {
-          dp[i][mode] = next;
+        if (currStates[newState] === null || next.cost < currStates[newState].cost) {
+          currStates[newState] = next;
         }
       }
     }
+
+    prevStates = currStates;
   }
 
-  const final = dp[n];
   let best = null;
+  let minCost = Infinity;
 
-  for (const mode in final) {
-    if (!best || final[mode].cost < best.cost) {
-      best = final[mode];
+  for (let s = 0; s < NUM_STATES; s++) {
+    if (prevStates[s] !== null && prevStates[s].cost < minCost) {
+      minCost = prevStates[s].cost;
+      best = prevStates[s];
     }
   }
 
@@ -194,35 +244,29 @@ export function splitIntoSegments(str="",strategy={}){
   return segments;
 }
 
-const modeNames = ['byte', 'numeric', 'alpha', 'kanji'];
-const modeCodes = { byte: 0, numeric: 1, alpha: 2, kanji: 3 }
 
 export class Strategy {
-  constructor(packed = new Uint8Array(0), length = 0, cost = 0, lastMode = '') {
-    this.packed = packed;
-    this.length = length;
+  constructor(prev = null, mode = '', cost = 0, length = 0) {
+    this.prev = prev;
+    this.mode = mode;
     this.cost = cost;
-    this.lastMode = lastMode;
+    this.length = length;
     this._steps = null
   }
 
   addStep(mode, newCost) {
-    let { length, packed } = this
-    const byteIdx = Math.floor(length / 4);
-    const shift = (3 - (length % 4)) * 2;
-    const new_arr_len = packed.length + (byteIdx < packed.length ? 0 : 1)
-    const new_packed = new Uint8Array(new_arr_len)
-    new_packed.set(packed);
-    new_packed[byteIdx] |= modeCodes[mode] << shift;
-    return new Strategy(new_packed, length + 1, newCost, mode);
+    return new Strategy(this, mode, newCost, this.length + 1)
   }
 
   get steps(){
     if(this._steps){ return this._steps }
-    return Array.from({ length: this.length }, (_, i) => {
-      const b = this.packed[Math.floor(i / 4)];
-      const shift = (3 - (i % 4)) * 2;
-      return modeNames[(b >> shift) & 0b11];
-    })
+    const res = []
+    let cur = this
+    while(cur.prev){
+      res.push(cur.mode)
+      cur = cur.prev;
+    }
+    this._steps = res.reverse()
+    return this._steps
   }
 }
