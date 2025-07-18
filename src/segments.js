@@ -45,6 +45,7 @@ export function optimalStrategy(str,{
   };
 }
 
+
 export function *allStrategies(str, version, ecl) {
   const dataCapacityBits = getNumDataCodewords(version, ecl) * 8;
   const n = str.length;
@@ -55,39 +56,32 @@ export function *allStrategies(str, version, ecl) {
     const { index, strategy } = stack.pop();
 
     if (index === n) {
+      strategy.cost = Math.ceil(strategy.cost)
       yield strategy;
       continue;
     }
 
-    const c = str[index];
-    const estimatedRemainingCost = (n - index - 1) * (10 / 3);
+    for (const mode of ['byte','alpha','numeric']) {
+      const charCost = modes[mode].charCost(str[index]);
+      let newCost
+      if (charCost === Infinity) continue;
+      const estimatedRemainingCost = (n - 1 - index) * (10 / 3);
 
-    // Try to extend current mode if possible (no header)
-    if (strategy.mode !== 'none') {
-      const modedef = modes[strategy.mode];
-      const addedBits = modedef.getMarginal(strategy.phase, c);
-      if (addedBits !== Infinity) {
-        const newPhase = (strategy.phase + 1) % modedef.groupSize;
-        const newCost = strategy.cost + addedBits;
-        if (newCost <= dataCapacityBits - estimatedRemainingCost) {
-          const newStrategy = strategy.addStep(strategy.mode, newPhase, newCost);
-          stack.push({ index: index + 1, strategy: newStrategy });
-        }
-      }
-    }
+      // for same mode, try both staying on segment and starting new segment
+      if(mode == strategy.mode){
+        newCost = strategy.cost + charCost
+        if (newCost > dataCapacityBits - estimatedRemainingCost) continue;
 
-    // Try to start a new segment for each mode (including current, with header)
-    for (const mode of ['byte', 'alpha', 'numeric']) {
-      const modedef = modes[mode];
-      const initialBits = modedef.getMarginal(0, c);
-      if (initialBits === Infinity) continue;
-      const headerBits = 4 + modedef.numCharCountBits(version);
-      const newCost = strategy.cost + headerBits + initialBits;
-      const newPhase = 1 % modedef.groupSize;
-      if (newCost <= dataCapacityBits - estimatedRemainingCost) {
-        const newStrategy = strategy.addStep(mode, newPhase, newCost);
+        const newStrategy = strategy.addStep(mode, newCost, false);
         stack.push({ index: index + 1, strategy: newStrategy });
       }
+
+      const headerBits = 4 + modes[mode].numCharCountBits(version);
+      newCost = Math.ceil(strategy.cost) + headerBits + charCost;
+      if (newCost > dataCapacityBits - estimatedRemainingCost) continue;
+
+      const newStrategy = strategy.addStep(mode, newCost, true);
+      stack.push({ index: index + 1, strategy: newStrategy });
     }
   }
 }
@@ -142,7 +136,7 @@ export function findMinimalSegmentation(str, version=1) {
           const newPhase = (prevPhase + 1) % curmode.groupSize;
           const newState = modeToIdx[prevMode] * MAX_GROUP_SIZE + newPhase;
           const newCost = prev.cost + addedBits;
-          const next = prev.addStep(prevMode, newCost);
+          const next = prev.addStep(prevMode, newCost, false);
           if (currStates[newState] === null || next.cost < currStates[newState].cost) {
             currStates[newState] = next;
           }
@@ -158,7 +152,7 @@ export function findMinimalSegmentation(str, version=1) {
         const newCost = prev.cost + headerBits + initialBits;
         const newPhase = 1 % curmode.groupSize;
         const newState = modeToIdx[mode] * MAX_GROUP_SIZE + newPhase;
-        const next = prev.addStep(mode, newCost);
+        const next = prev.addStep(mode, newCost, true);
         if (currStates[newState] === null || next.cost < currStates[newState].cost) {
           currStates[newState] = next;
         }
@@ -242,46 +236,60 @@ export function getNumDataCodewords(ver, ecl) {
 }
 
 export function splitIntoSegments(str="",strategy={}){
+
   let segments = []
-  let steps = strategy.steps
-  let curMode = steps[0]
-  let start = 0
-  for(let i = 1; i <= str.length; i++){
-    if(i >= str.length || steps[i] != curMode){
-      segments.push({
-        mode: curMode,
-        str: str.slice(start,i),
-      })
-      curMode = steps[i];
-      start = i;
-    }
+  let i = 0
+  for(let [mode, len] of strategy.steps){
+    segments.push({ mode, str: str.slice(i,i+len) } )
+    i += len
   }
-  return segments;
+  
+  return segments
+
 }
 
-
 export class Strategy {
-  constructor(prev = null, mode = '', cost = 0, length = 0) {
+  constructor(prev = null, mode = '', cost = 0, length = 0, isNewSegment = true) {
     this.prev = prev;
     this.mode = mode;
     this.cost = cost;
     this.length = length;
-    this._steps = null
+    this.isNewSegment = isNewSegment;
+    this._steps = null;
   }
 
-  addStep(mode, newCost) {
-    return new Strategy(this, mode, newCost, this.length + 1)
+  addStep(mode, newCost, isSwitch = false) {
+    const isNewSegment = isSwitch || (mode !== this.mode);
+    return new Strategy(this, mode, newCost, this.length + 1, isNewSegment);
   }
 
-  get steps(){
-    if(this._steps){ return this._steps }
-    const res = []
-    let cur = this
-    while(cur.prev){
-      res.push(cur.mode)
+  get steps() {
+    if (this._steps) return this._steps;
+    const perChar = [];
+    let cur = this;
+    while (cur.prev) {
+      perChar.push({ mode: cur.mode, isNew: cur.isNewSegment });
       cur = cur.prev;
     }
-    this._steps = res.reverse()
-    return this._steps
+    perChar.reverse(); // Now in forward order
+    const groups = [];
+    let currentMode = null;
+    let currentCount = 0;
+    for (const { mode, isNew } of perChar) {
+      if (isNew || mode !== currentMode) {
+        if (currentCount > 0) {
+          groups.push([currentMode, currentCount]);
+        }
+        currentMode = mode;
+        currentCount = 1;
+      } else {
+        currentCount++;
+      }
+    }
+    if (currentCount > 0) {
+      groups.push([currentMode, currentCount]);
+    }
+    this._steps = groups;
+    return this._steps;
   }
 }
